@@ -1,0 +1,107 @@
+# Second brain kit
+
+A second brain that runs on [Claude Code](https://docs.anthropic.com/en/docs/claude-code) and plain markdown files in a git repo.
+
+You throw raw stuff in: a thought from the terminal, meeting notes, a document, the day's work. Claude turns it into a clean, linked wiki about your life and work, keeps a ledger of who owes what to whom, and gives you a short brief every morning. No app, no database, no account. Everything is files you own.
+
+```
+brain "Sam said the quote is fine if we ship by the 20th"
+        │
+        ▼
+     raw/2026-01-12.md  ──/translate──▶  wiki/sam.md            (Now: quote agreed, ship by 20 Jan)
+                                         commitments.md         (you owe Sam: ship by 2026-01-20)
+                                         archive/2026-01-12.md  (the original, kept forever)
+                                                │
+                                   08:30 ──▶ brief: "one: confirm the 20th with Sam"
+```
+
+## Set up your own
+
+1. Click **Use this template** at the top of this page, and make the new repo **Private**. Your notes go in it.
+2. Clone it and run the setup:
+
+   ```bash
+   git clone git@github.com:<you>/<your-brain>.git ~/second-brain
+   cd ~/second-brain
+   ./setup.sh
+   ```
+
+   It asks a few lines about you, writes `brain.config`, links the `brain` command and lets you pick the scheduled jobs.
+3. Start Claude Code in the folder and let it get to know you:
+
+   ```bash
+   claude
+   /interview
+   ```
+
+Needs macOS or Linux, git, python3 and Claude Code. The scheduled jobs use launchd on macOS; on Linux `setup.sh` prints crontab lines instead.
+
+## Use it
+
+**Capture, anytime.** `brain "the thought"` from any terminal lands in `raw/<today>.md` with the time. `echo ... | brain` works too, and `brain` alone opens your editor. Anything else you drop in `raw/` counts: meeting notes, pasted chats, a PDF's text.
+
+**Process.** `/translate` in Claude Code, or the nightly job does it for you. Each raw file is merged into the wiki, promises go into the ledger, and the file moves to `archive/`.
+
+**Ask.** Open Claude Code in the folder and ask anything about your own past: "what did I decide about pricing in March?", "what do I owe Sam?".
+
+**Before a meeting.** `/prep Sam`: last time, who owes what, three questions to ask.
+
+**End of a session.** `/log` writes what the session taught the brain about you into the wiki.
+
+| Command | What it does |
+|---|---|
+| `/translate` | `raw/` into `wiki/`, promises into `commitments.md`, files into `archive/`, commit |
+| `/today` | the morning brief, on demand |
+| `/prep <who>` | one-screen brief before a meeting |
+| `/log` | save what this session taught about you |
+| `/digest <project>` | summarize `projects/<project>/` into its README |
+| `/interview [topic]` | Claude asks, one question at a time, and fills the wiki |
+| `brain ls` | what is waiting in `raw/` |
+| `brain done <id>` | mark a ledger row done |
+| `brain health` | state of the scheduled jobs |
+
+## Folders
+
+| Folder | What lives there |
+|---|---|
+| `raw/` | inbox. Everything lands here first |
+| `wiki/` | clean notes, one topic per file, linked. Open the repo in Obsidian for the graph |
+| `archive/` | processed raw files, never edited again |
+| `projects/` | one folder per active project, each with a `README.md` digest |
+| `drafts/` | things the brain writes for you to use. Never sent anywhere on its own |
+| `private/` | git-ignored. Claude may read it when you ask, never copies it out |
+| `commitments.md` | the ledger: who owes what to whom, by when |
+| `data/` | what the jobs write: today's brief |
+| `prompts/` | the long prompts behind the loops. Edit them to change behavior |
+
+## Scheduled jobs
+
+All optional, all chosen in `setup.sh` (`./setup.sh jobs` to change them later). Each one runs Claude headless, so it uses your Claude usage.
+
+| Job | When | What |
+|---|---|---|
+| translate | 23:55 | runs `/translate` on whatever is in `raw/` |
+| brief | 08:30 | writes `data/brief.md` and shows one notification: the one thing for today |
+| work | 23:40 | reads the day's Claude Code sessions and your git commits under `PROJECTS_DIR`, writes a work digest into `raw/` |
+| sweep | 18:00 | copies documents from `INBOX_DIR` into `raw/` as text |
+| wispr | 18:30 | only if you use Wispr Flow: finished meeting notes into `raw/` |
+
+If a job hits a usage limit, every job pauses until the reset time instead of failing over and over. Three failures in a row send one notification. `brain health` shows the state, `brain resume` clears a pause.
+
+If your repo has a remote, the jobs pull before and push after, so your phone (Claude Code in the Claude app, opened on the same repo) sees the same brain.
+
+## Make it yours
+
+- **Who you are and how it writes:** `wiki/about-me.md` and `wiki/voice.md`. Every loop reads them.
+- **The rules:** `CLAUDE.md`. The hard rules (never delete raw or archive, merge never overwrite, private stays private) are what keep the brain trustworthy; change the rest freely.
+- **Behavior:** the prompts in `prompts/` and the commands in `.claude/commands/` are plain markdown. Add a command by adding a file.
+- **The brief with your calendar or mail:** connect those tools to your Claude account, then list them in `BRIEF_TOOLS` in `brain.config`.
+- **Other agents:** `AGENTS.md` points any agent to the same rules. From Claude Desktop, Cursor or Codex: "read .claude/commands/today.md and do it".
+
+## Privacy
+
+Your notes live in your own repo, which should be private. Nothing here sends data anywhere except Claude, through your own Claude Code login. `private/` never enters git at all. Uninstall the jobs with `./setup.sh uninstall`; your notes stay untouched.
+
+## License
+
+MIT

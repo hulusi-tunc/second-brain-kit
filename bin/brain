@@ -1,0 +1,52 @@
+#!/bin/bash
+# brain "a thought"      append to raw/<today>.md with the time
+# echo "..." | brain     from stdin
+# brain                  open your editor
+# brain ls               what is waiting in raw/
+# brain done <id>        mark a commitments.md row done (reopen <id> undoes it)
+# brain health           state of the scheduled jobs
+# brain resume           clear a usage-limit pause
+# brain login            log the jobs' Claude account in
+SB="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"; RAW="$SB/raw"
+case "$1" in
+  health)
+    . "$SB/bin/brain-lib.sh" health
+    for f in "$HEALTH_DIR"/*; do [ -f "$f" ] || continue; read -r last n why < "$f"
+      printf "%-10s last ok %s, %s fails in a row, %s\n" "$(basename "$f")" \
+        "$( [ "${last:-0}" -gt 0 ] && date -r "$last" '+%d %b %H:%M' || echo never)" "$n" "$why"; done
+    echo "summary: $(brain_health_line)"; exit 0 ;;
+  resume)
+    rm -f "$HOME/.second-brain/pause" && echo "pause cleared, jobs run on their next tick"; exit 0 ;;
+  login)
+    . "$SB/bin/brain-lib.sh" login
+    "$CLAUDE" auth login; exit $? ;;
+  ls)
+    n=$(find "$RAW" -type f ! -name .gitkeep | wc -l | tr -d ' ')
+    echo "$n file(s) waiting in raw/:"; find "$RAW" -type f ! -name .gitkeep -exec basename {} \; | sort
+    [ "$n" -gt 0 ] && echo "to process: cd $SB && claude, then /translate"
+    exit 0 ;;
+  done|reopen)
+    [[ "$2" =~ ^c[0-9a-f]{7}$ ]] || { echo "usage: brain $1 c1234abc"; exit 1; }
+    python3 - "$SB/commitments.md" "$1" "$2" <<'PY' || exit 1
+import re, sys, datetime
+path, verb, rid = sys.argv[1:]
+text = open(path).read()
+m = re.search(rf"^\| {rid} \|.*$", text, re.M)
+if not m: sys.exit(f"no row {rid} in commitments.md")
+c = [x.strip() for x in m.group(0).strip().strip("|").split("|")]
+today = datetime.date.today().isoformat()
+if verb == "done": c[6] = "done"; c[7] += f", done {today}"
+else: c[6] = "open"; c[7] += f", reopened {today}"
+open(path, "w").write(text.replace(m.group(0), "| " + " | ".join(c) + " |"))
+print(f"{rid}: {c[6]} - {c[4]}")
+PY
+    git -C "$SB" add commitments.md && git -C "$SB" commit -q -m "ledger: $1 $2"; exit 0 ;;
+esac
+f="$RAW/$(date +%Y-%m-%d).md"
+if [ $# -gt 0 ]; then text="$*"
+elif [ ! -t 0 ]; then text="$(cat)"
+else tmp=$(mktemp); ${EDITOR:-nano} "$tmp"; text="$(cat "$tmp")"; rm -f "$tmp"; fi
+[ -z "$(echo "$text" | tr -d '[:space:]')" ] && { echo "empty, nothing saved"; exit 1; }
+[ -f "$f" ] || printf "# %s\n\n" "$(date +%Y-%m-%d)" > "$f"
+printf "## %s\n\n%s\n\n" "$(date +%H:%M)" "$text" >> "$f"
+echo "saved -> raw/$(basename "$f")"

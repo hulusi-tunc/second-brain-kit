@@ -1,0 +1,8 @@
+.DS_Store
+__pycache__/
+# your intimate layer: the AI can read it, git never sees it
+private/*
+!private/README.md
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+brain.config

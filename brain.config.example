@@ -1,0 +1,24 @@
+# Copied to brain.config by setup.sh. Per machine, git-ignored. Plain shell: KEY="value".
+
+# Full path to the claude CLI. launchd jobs do not see your shell's PATH, so it is stored here.
+CLAUDE_BIN=""
+
+# Optional: a separate Claude login just for the jobs (run `brain login` after setting it).
+# Leave empty to use your normal login.
+BRAIN_CLAUDE_DIR=""
+
+# Where your code lives. The nightly work digest reads Claude Code sessions and git commits under it.
+PROJECTS_DIR="$HOME/Projects"
+
+# Drop documents here; the daily sweep copies them into raw/ as text.
+INBOX_DIR="$HOME/Inbox"
+
+# Extra tools the morning brief may use, comma separated, for example connected calendar or mail tools:
+# BRIEF_TOOLS="mcp__claude_ai_Google_Calendar__list_events,mcp__claude_ai_Gmail__search_threads"
+BRIEF_TOOLS=""
+
+# Git branch the jobs pull and push. Pushing only happens when the repo has a remote.
+BRAIN_BRANCH="main"
+
+# Where the jobs write their log.
+BRAIN_LOG="$HOME/Library/Logs/second-brain.log"
