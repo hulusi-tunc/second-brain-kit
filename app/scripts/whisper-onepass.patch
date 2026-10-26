@@ -1,0 +1,43 @@
+diff --git a/src/whisper.cpp b/src/whisper.cpp
+index dd8bd93..6fab9ff 100644
+--- a/src/whisper.cpp
++++ b/src/whisper.cpp
+@@ -6981,6 +6981,11 @@ int whisper_full_with_state(
+         }
+     }
+ 
++    // brain patch: apply the window before language detection, and let the first encode serve both the
++    // detection and the transcription (stock whisper.cpp encodes the same audio twice with "auto")
++    state->exp_n_audio_ctx = params.audio_ctx;
++    bool brain_encoded_seek0 = false;
++
+     // auto-detect language if not specified
+     if (params.language == nullptr || strlen(params.language) == 0 || strcmp(params.language, "auto") == 0 || params.detect_language) {
+         std::vector<float> probs(whisper_lang_max_id() + 1, 0.0f);
+@@ -6999,6 +7004,7 @@ int whisper_full_with_state(
+         }
+         state->lang_id = lang_id;
+         params.language = whisper_lang_str(lang_id);
++        brain_encoded_seek0 = true;
+ 
+         WHISPER_LOG_INFO("%s: auto-detected language: %s (p = %f)\n", __func__, params.language, probs[whisper_lang_id(params.language)]);
+         if (params.detect_language) {
+@@ -7203,11 +7209,14 @@ int whisper_full_with_state(
+             }
+         }
+ 
+-        // encode audio features starting at offset seek
+-        if (!whisper_encode_internal(*ctx, *state, seek, params.n_threads, params.abort_callback, params.abort_callback_user_data)) {
+-            WHISPER_LOG_ERROR("%s: failed to encode\n", __func__);
+-            return -6;
++        // encode audio features starting at offset seek (unless language detection just did, brain patch)
++        if (!(brain_encoded_seek0 && seek == 0)) {
++            if (!whisper_encode_internal(*ctx, *state, seek, params.n_threads, params.abort_callback, params.abort_callback_user_data)) {
++                WHISPER_LOG_ERROR("%s: failed to encode\n", __func__);
++                return -6;
++            }
+         }
++        brain_encoded_seek0 = false;
+ 
+         // if there is a very short audio segment left to process, we remove any past prompt since it tends
+         // to confuse the decoder and often make it repeat or hallucinate stuff

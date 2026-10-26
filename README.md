@@ -61,6 +61,10 @@ Needs macOS or Linux, git, python3 and Claude Code. Node.js too, if you connect 
 | `brain health` | state of the scheduled jobs |
 | `brain slack add <name>` | read one more Slack workspace (see Slack, below) |
 
+## The Mac app
+
+Optional, in [`app/`](app/README.md): it lives in the notch. Hold a key and talk to type anywhere, ask your brain a question out loud, and get notes with a summary after every call, all transcribed on your Mac. `setup.sh` offers to install it, or see [app/README.md](app/README.md).
+
 ## Folders
 
 | Folder | What lives there |
@@ -74,6 +78,7 @@ Needs macOS or Linux, git, python3 and Claude Code. Node.js too, if you connect 
 | `commitments.md` | the ledger: who owes what to whom, by when |
 | `data/` | what the jobs write: today's brief |
 | `prompts/` | the long prompts behind the loops. Edit them to change behavior |
+| `app/` | the Mac app, optional |
 
 ## Scheduled jobs
 

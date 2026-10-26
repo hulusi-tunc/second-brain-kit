@@ -115,7 +115,15 @@ echo "linked: brain -> ~/.local/bin/brain"
 # 5. jobs
 choose_jobs
 
-# 6. commit your details into your own repo
+# 6. the Mac app (optional)
+if [ $MAC -eq 1 ] && [ "$(uname -m)" = arm64 ]; then
+  echo
+  if confirm "Install the Mac app too (dictation, ask from the notch, call notes; downloads 575 MB)" n; then
+    (cd app && scripts/models.sh && scripts/build.sh) || echo "app not installed, see app/README.md"
+  fi
+fi
+
+# 7. commit your details into your own repo
 git add wiki/about-me.md wiki/voice.md 2>/dev/null && { git diff --cached --quiet || git commit -q -m "setup: about me"; } || true
 
 cat <<EOF
