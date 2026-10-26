@@ -24,8 +24,8 @@ enum Busy {
 @MainActor
 final class App: NSObject, NSApplicationDelegate {
   private let island = IslandPanel()
-  /// holds the answer history and the mic state; its floating window stays closed, the notch shows everything
-  private let panel = BrainPanel()
+  /// every question and its answer, kept in private/brain/
+  private let answers = AnswerHistory()
   /// takes in a row where the mic sent nothing at all
   private var silentTakes = 0
   private let whisper = Whisper()
@@ -62,7 +62,6 @@ final class App: NSObject, NSApplicationDelegate {
 
   func applicationDidFinishLaunching(_ n: Notification) {
     Busy.clear()   // whatever the last run was doing ended with it
-    S.registerFont()
     everywhere.onAsk = { [weak self] q in self?.ask(q) }
     everywhere.onOpen = { [weak self] in self?.showQuick(false) }
     everywhere.onSaved = { [weak self] in self?.island.show(.note("Saved to Brain", "in today's notes"), for: 2) }
@@ -89,8 +88,7 @@ final class App: NSObject, NSApplicationDelegate {
     }
     waitForAccessibility(prompt: true)
     mic.onLevel = { [weak self] l in
-      guard let self else { return }
-      if self.panel.model.listening { self.panel.model.push(level: l) } else { self.island.model.push(level: l) }
+      self?.island.model.push(level: l)
     }
     mic.onSlow = { [weak self] in self?.island.show(.note("Microphone", "macOS audio is not answering"), for: 5) }
     // the audio system is stuck inside a call the app cannot cancel: start again (launchd brings it
@@ -109,33 +107,8 @@ final class App: NSObject, NSApplicationDelegate {
     island.onHover = { [weak self] in self?.hovered() }
     // the notch itself grows under the pointer
     island.onNotchHover = { [weak self] in guard let self, self.island.model.phase == .hidden else { return }; self.showQuick(false) }
-    island.onNotchNear = { [weak self] in guard let self, !self.panel.isOpen else { return }; self.showQuick(false) }
+    island.onNotchNear = { [weak self] in self?.showQuick(false) }
     island.model.onQuick = { [weak self] id in self?.quick(id) }
-    panel.setUp()
-    panel.anchor = { [weak self] in
-      guard let self else { return nil }
-      if self.island.model.phase == .hidden { self.island.place() }
-      return self.island.anchor
-    }
-    panel.onOpened = { [weak self] in self?.foldedAway() }
-    panel.onFolded = { [weak self] in self?.foldedInto(unread: false) }
-    panel.onClosed = { [weak self] in self?.foldedAway() }
-    panel.onReach = { [weak self] near in
-      guard let self else { return }
-      if near { if self.island.model.phase == .hidden { self.island.show(.folded(false)) } }
-      else if self.island.folded == nil, case .folded = self.island.model.phase { self.island.hide() }
-    }
-    panel.model.onNew = { [weak self] in
-      guard let self else { return }
-      self.brainTask?.terminate(); self.brainTask = nil
-      self.panel.model.earlier = []
-      self.panel.model.now = .empty
-    }
-    panel.model.onAsk = { [weak self] q in self?.ask(q) }
-    panel.model.onOpen = { f in Brain.open(f) }
-    panel.model.onStopCall = { [weak self] in self?.calls.stopByHand() }
-    panel.model.onWarm = { [weak self] on in self?.setWarm(on) }
-    panel.model.warm = mic.alwaysWarm
     island.onLeave = { [weak self] in self?.island.hide() }
     island.onOutsideClick = { [weak self] in
       guard let self else { return }
@@ -199,14 +172,7 @@ final class App: NSObject, NSApplicationDelegate {
     targetApp = front?.localizedName ?? "the app"
     targetBundle = front?.bundleIdentifier ?? ""
     startedAt = Date()
-    followUp = mode == .brain && panel.isOpen && selection == nil
-    if followUp {
-      panel.model.listening = true
-      island.hide()
-    } else {
-      if mode == .brain, selection != nil, panel.isOpen, panel.home == .notch { panel.fold() }
-      island.show(mode == .brain ? (selection != nil ? .card(BrainCards.listening(selection: selection)) : .ask) : .listening)
-    }
+    island.show(mode == .brain ? (selection != nil ? .card(BrainCards.listening(selection: selection)) : .ask) : .listening)
     // Whisper wakes on the GPU once the opening has played, still long before the keys are let go
     if ready { DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in self?.whisper.warmUp() } }
     mic.start { [weak self] error in
@@ -221,7 +187,6 @@ final class App: NSObject, NSApplicationDelegate {
     if tapToReplace { tapToReplace = false; _ = mic.stop(); if !cancelled { button("replace") }; return }
     let samples = mic.stop()
     let peakNow = mic.peakLevel
-    panel.model.listening = false
     Volume.back()
     let seconds = Double(samples.count) / 16_000
     Log.write("key up: \(mode == .brain ? "brain" : "talk"), \(String(format: "%.1f", seconds)) s, peak \(String(format: "%.4f", peakNow)), cancelled \(cancelled)")
@@ -313,14 +278,8 @@ final class App: NSObject, NSApplicationDelegate {
 
   private func brainJoined() {
     if selection == nil { readSelection() }
-    followUp = panel.isOpen && selection == nil
-    if followUp { panel.model.listening = true; island.hide() } else {
-      island.show(selection != nil ? .card(BrainCards.listening(selection: selection)) : .ask)
-    }
+    island.show(selection != nil ? .card(BrainCards.listening(selection: selection)) : .ask)
   }
-
-  /// the brain keys went down while the panel was open, with nothing selected: a follow-up
-  private var followUp = false
 
   private func readSelection() {
     switch Selection.read() {
@@ -331,9 +290,7 @@ final class App: NSObject, NSApplicationDelegate {
   }
 
   private func brainHeard(_ samples: [Float]) {
-    if followUp && selection == nil { panel.model.writing = true } else {
-      island.show(selection != nil ? .card(BrainCards.writing(selection: true)) : .note("Ask the brain", "writing"))
-    }
+    island.show(selection != nil ? .card(BrainCards.writing(selection: true)) : .note("Ask the brain", "writing"))
     // the app would not say what is selected: copy it now, while the words are being written down
     if selection == nil && selectionUnknown {
       Selection.viaCopy { [weak self] t in self?.selection = t; self?.selectionUnknown = false }
@@ -341,7 +298,6 @@ final class App: NSObject, NSApplicationDelegate {
     whisper.transcribe(samples, prompt: vocab.prompt) { [weak self] r in
       guard let self else { return }
       let q = r.flatMap { self.vocab.apply($0.text) }.map { Cleaner.clean($0, bundle: "") } ?? ""
-      self.panel.model.writing = false
       Log.write("brain heard: \(q.count) chars, \(r?.language ?? "?"), \(r?.millis ?? -1) ms, selection \(self.selection != nil)")
       guard !q.isEmpty else { self.island.show(.nothing, for: 1.5); return }
       if self.voiceSwitch(q) { Log.write("brain: a voice switch"); return }
@@ -404,26 +360,10 @@ final class App: NSObject, NSApplicationDelegate {
       let data = Answer(out)
       self.lastQA = (q, out)
       self.answerFile = App.file(in: data.rows.map { $0.source + " " + $0.file })
-      self.panel.model.remember(HistoryItem(q: q, at: since, head: data.kind == "none" ? "Not in the brain" : data.head, raw: out, seconds: secs))
+      self.answers.remember(HistoryItem(q: q, at: since, head: data.kind == "none" ? "Not in the brain" : data.head, raw: out, seconds: secs))
       Log.write("ask: \(steps.count) steps, \(out.split(separator: "\n").count) lines back in \(secs) s")
       self.island.show(.card(BrainCards.answer(q, out: out, seconds: secs)))
     })
-  }
-
-  /// The panel folded into the notch: its mark stays there while the panel holds something.
-  private func foldedInto(unread: Bool) {
-    if case .empty = panel.model.now { foldedAway(); return }
-    island.folded = .folded(unread)
-    switch island.model.phase {
-    case .hidden, .folded: island.show(.folded(unread))
-    default: break   // a call rests there; the mark comes back after
-    }
-  }
-
-  /// Opened or closed: nothing waits in the notch any more.
-  private func foldedAway() {
-    island.folded = nil
-    if case .folded = island.model.phase { island.hide() }
   }
 
   /// The page an answer came from: the first .md file named in its sources, else the ledger.
@@ -441,7 +381,6 @@ final class App: NSObject, NSApplicationDelegate {
   }
 
   private func command(_ instruction: String, on text: String) {
-    if panel.isOpen, panel.home == .notch { panel.fold() }
     island.show(.card(BrainCards.rewriting(instruction, since: Date())))
     brainTask = Brain.run(["rewrite", instruction], input: text) { [weak self] out in
       guard let self else { return }
@@ -553,7 +492,7 @@ final class App: NSObject, NSApplicationDelegate {
 
   /// The quick island: the notch grown under the pointer, its switches showing what is on now
   private func showQuick(_ expanded: Bool) {
-    island.model.quickWarm = panel.model.warm
+    island.model.quickWarm = mic.alwaysWarm
     island.hoverCard = true
     island.show(.quick(expanded))
   }
@@ -562,7 +501,7 @@ final class App: NSObject, NSApplicationDelegate {
     Log.write("quick: \(id)")
     switch id {
     case "folder": island.hide(); NSWorkspace.shared.open(Config.repo)
-    case "warm": setWarm(!panel.model.warm); showQuick(expanded)
+    case "warm": setWarm(!mic.alwaysWarm); showQuick(expanded)
     case "more": island.model.quickPage = ""; showQuick(!expanded)
     case "back": island.model.quickPage = ""; showQuick(true)
     case "last":
@@ -707,7 +646,6 @@ final class App: NSObject, NSApplicationDelegate {
 
   private var warmItem: NSMenuItem?
   private func setWarm(_ on: Bool) {
-    panel.model.warm = on
     warmItem?.state = on ? .on : .off
     UserDefaults.standard.set(on, forKey: "alwaysWarm")
     mic.alwaysWarm = on

@@ -16,8 +16,8 @@ final class IslandModel: ObservableObject {
     case prep(String, Date)      // who, and when the call starts: "Sam in 5 min"
     case card(Card)
     case thinking(Date)
-    case ready(String)           // an answer waits in the folded panel: a pink dot and its first words
-    case folded(Bool)            // the panel folded into the notch: the brain mark beside it; true: unread
+    case ready(String)           // an answer waits: a pink dot and its first words
+    case folded(Bool)            // the brain mark beside the notch; true: unread
     case quick(Bool)
   }
   @Published var phase: Phase = .hidden
@@ -30,7 +30,7 @@ final class IslandModel: ObservableObject {
   var onQuick: ((String) -> Void)?
   @Published var levels: [CGFloat] = Array(repeating: 0.15, count: 7)
   @Published var elapsed: Int = 0
-  /// the island's drawn size, so the panel can take clicks exactly there while a card is open
+  /// the island's drawn size, so its window can take clicks exactly there while a card is open
   var size: CGSize = .zero
 
   var meterFrom = Date.distantPast
@@ -682,7 +682,7 @@ final class IslandHost<V: View>: NSHostingView<V> {
   override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
 }
 
-/// The panel that holds the island, over the notch of the built-in screen, or the pill on the
+/// The window that holds the island, over the notch of the built-in screen, or the pill on the
 /// main screen when there is no notch (an external display). It lets every click through, except
 /// while a card is open: then it shrinks to the card and takes clicks there only.
 @MainActor
@@ -698,8 +698,7 @@ final class IslandPanel {
   private var islandW: CGFloat = 0
   private var islandH: CGFloat = 28
   private var notchRect = NSRect.zero
-  /// the notch itself in screen points (on a screen without one, the pill's place): the panel comes
-  /// out of it and folds back into it
+  /// the notch itself in screen points (on a screen without one, the pill's place)
   private(set) var anchor = NSRect.zero
   var onNotchHover: (() -> Void)?
   var onNotchNear: (() -> Void)?
@@ -773,7 +772,7 @@ final class IslandPanel {
     let host = IslandHost(rootView: IslandView(
       model: model, notchWidth: notchW, height: h, wing: wing, pill: pill,
       reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion))
-    // the panel's size is ours to set; SwiftUI must not grow it from its left edge
+    // the window's size is ours to set; SwiftUI must not grow it from its left edge
     host.sizingOptions = []
     p.contentView = host
     p.setFrame(big, display: true)
@@ -915,7 +914,7 @@ final class IslandPanel {
   /// While a call records, or a call is about to start, the island rests there instead of hiding.
   var rest: IslandModel.Phase?
 
-  /// The panel folded into the notch: shown whenever nothing else rests there.
+  /// The brain mark beside the notch: shown whenever nothing else rests there.
   var folded: IslandModel.Phase?
 
   func hide() {

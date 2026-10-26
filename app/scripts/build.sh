@@ -24,7 +24,6 @@ swift build -c release > "$LOGB" 2>&1 || { grep -E "error" "$LOGB" | head -5; ec
 APP=build/Brain.app
 rm -rf "$APP"; mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp .build/release/Brain "$APP/Contents/MacOS/Brain"
-cp Resources/Geist-Variable.ttf Resources/Geist-LICENSE.txt "$APP/Contents/Resources/"
 VERSION=$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null || echo 1)
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
