@@ -1,0 +1,19 @@
+#!/bin/bash
+# Starts the Slack MCP server for one workspace. Claude Code runs this; you do not.
+# The token comes from the macOS Keychain (or ~/.second-brain/slack/<name>.token on Linux), never from a file
+# in the repo. Added by: brain slack add <name>
+# Server: github.com/korotovsky/slack-mcp-server (MIT). Read-only here: posting stays off.
+NAME="$1"
+[ -z "$NAME" ] && { echo "usage: slack-mcp <workspace-name>" >&2; exit 1; }
+if command -v security >/dev/null; then
+  TOKEN=$(security find-generic-password -s second-brain-slack -a "$NAME" -w 2>/dev/null)
+else
+  TOKEN=$(cat "$HOME/.second-brain/slack/$NAME.token" 2>/dev/null)
+fi
+[ -z "$TOKEN" ] && { echo "no Slack token for '$NAME', run: brain slack add $NAME" >&2; exit 1; }
+CACHE="$HOME/.second-brain/slack/$NAME"; mkdir -p "$CACHE"
+export SLACK_MCP_XOXP_TOKEN="$TOKEN"
+export SLACK_MCP_USERS_CACHE="$CACHE/users.json"
+export SLACK_MCP_CHANNELS_CACHE="$CACHE/channels.json"
+unset SLACK_MCP_ADD_MESSAGE_TOOL
+exec npx -y slack-mcp-server@1.3.0 --transport stdio

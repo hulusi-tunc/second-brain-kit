@@ -34,7 +34,7 @@ brain "Sam said the quote is fine if we ship by the 20th"
    /interview
    ```
 
-Needs macOS or Linux, git, python3 and Claude Code. The scheduled jobs use launchd on macOS; on Linux `setup.sh` prints crontab lines instead.
+Needs macOS or Linux, git, python3 and Claude Code. Node.js too, if you connect Slack. The scheduled jobs use launchd on macOS; on Linux `setup.sh` prints crontab lines instead.
 
 ## Use it
 
@@ -59,6 +59,7 @@ Needs macOS or Linux, git, python3 and Claude Code. The scheduled jobs use launc
 | `brain ls` | what is waiting in `raw/` |
 | `brain done <id>` | mark a ledger row done |
 | `brain health` | state of the scheduled jobs |
+| `brain slack add <name>` | read one more Slack workspace (see Slack, below) |
 
 ## Folders
 
@@ -89,6 +90,27 @@ All optional, all chosen in `setup.sh` (`./setup.sh jobs` to change them later).
 If a job hits a usage limit, every job pauses until the reset time instead of failing over and over. Three failures in a row send one notification. `brain health` shows the state, `brain resume` clears a pause.
 
 If your repo has a remote, the jobs pull before and push after, so your phone (Claude Code in the Claude app, opened on the same repo) sees the same brain.
+
+## Slack, every workspace
+
+The Slack connector on claude.ai reaches one workspace. If you work across several (your company plus one per client), the brain runs one small read-only Slack server per workspace instead, so `/today`, `/prep`, the morning brief and plain questions see all of them.
+
+Once per workspace:
+
+1. Open [api.slack.com/apps](https://api.slack.com/apps), **Create New App**, **From a manifest**, pick the workspace, and paste [`slack/app-manifest.json`](slack/app-manifest.json). It asks only for read access: history, search, people. It cannot post.
+2. **Install to Workspace**. Some workspaces only allow apps an admin has approved; then Slack sends the admin a request, and you continue once it is approved.
+3. Copy the **User OAuth Token** (`xoxp-...`) from **OAuth & Permissions**.
+4. In a terminal:
+
+   ```bash
+   brain slack add agency        # a short name you choose for this workspace
+   ```
+
+   Paste the token when asked. It is checked with Slack and kept in your macOS Keychain, never in a file.
+
+Then `brain slack ls` shows every workspace and whether its token still works, and `brain slack remove <name>` takes one out. In Claude Code each workspace is a server called `slack-<name>`: ask "what did the Northwind team ask me this week?" and Claude searches the right one.
+
+Uses [slack-mcp-server](https://github.com/korotovsky/slack-mcp-server) (MIT) through `npx`, so Node.js must be installed. Before you point it at a client's workspace, check that your agreement with them allows it.
 
 ## Make it yours
 

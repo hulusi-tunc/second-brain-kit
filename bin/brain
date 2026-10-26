@@ -7,8 +7,10 @@
 # brain health           state of the scheduled jobs
 # brain resume           clear a usage-limit pause
 # brain login            log the jobs' Claude account in
+# brain slack ...        Slack workspaces this brain reads (add, ls, remove)
 SB="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"; RAW="$SB/raw"
 case "$1" in
+  slack) shift; exec "$SB/bin/brain-slack.sh" "$@" ;;
   health)
     . "$SB/bin/brain-lib.sh" health
     for f in "$HEALTH_DIR"/*; do [ -f "$f" ] || continue; read -r last n why < "$f"

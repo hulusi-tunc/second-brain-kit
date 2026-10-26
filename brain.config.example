@@ -17,6 +17,9 @@ INBOX_DIR="$HOME/Inbox"
 # BRIEF_TOOLS="mcp__claude_ai_Google_Calendar__list_events,mcp__claude_ai_Gmail__search_threads"
 BRIEF_TOOLS=""
 
+# Slack workspaces this brain reads, one read-only server each. Managed by `brain slack add/remove`.
+SLACK_WORKSPACES=""
+
 # Git branch the jobs pull and push. Pushing only happens when the repo has a remote.
 BRAIN_BRANCH="main"
 

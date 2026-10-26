@@ -9,6 +9,9 @@ brain_pull
 TODAY=$(date +%Y-%m-%d)
 HEALTH=$(brain_health_line)
 TOOLS="Read,Glob,Grep,Write${BRIEF_TOOLS:+,ToolSearch,$BRIEF_TOOLS}"
+# every Slack workspace added with `brain slack add`, whole server allowed (it is read-only)
+for n in $SLACK_WORKSPACES; do TOOLS="$TOOLS,mcp__slack-$n"; done
+[ -n "$SLACK_WORKSPACES" ] && [[ "$TOOLS" != *ToolSearch* ]] && TOOLS="$TOOLS,ToolSearch"
 OUT=$("$CLAUDE" -p "Today is $TODAY. Health of the brain's own jobs: $HEALTH. If that is not \"all ok\", make it the first line of the brief, plainly. Then read prompts/brief.md and do exactly what it says." \
   --output-format text --allowedTools "$TOOLS" < /dev/null 2>&1)
 RC=$?; echo "$OUT" >> "$LOG"
