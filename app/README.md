@@ -4,6 +4,7 @@ The second brain's Mac app. It lives in the notch (or a small pill at the top of
 
 - **Dictation.** Hold **right ⌥**, talk, let go: the text lands where the cursor is. Whisper large-v3-turbo runs on the GPU, so a 10 s take is written in under a second. Fillers ("um", "uh") and self-corrections ("at 3, no wait, at 4") are cleaned up; "new line" and "new paragraph" work.
 - **Ask the brain.** Hold **right ⌥ and right ⌘** together and ask: "what do I owe Sam?". The notch shows what the brain reads, then the answer from your wiki and ledger. With text selected, say what to do with it instead ("make it shorter", "fix the grammar") and press Replace.
+- **Brain Home.** The dashboard of your brain in its own window: the dial of people and projects, Today, Week and Review, and Ask. Open it from the notch (Brain Home), the menu bar, Spotlight, or `brain://home`. Done, keep and drop write straight to your ledger.
 - **Call notes.** When a call app holds the mic (Meet, Zoom, Teams, Slack, FaceTime and others), the app records your mic and the call as two tracks. When the call ends, both are transcribed and a note lands in `raw/`, then Claude adds a title, a summary and next steps. Five minutes before a call in your calendar, the notch offers a prep card: last time, who owes what, what to ask.
 
 Audio stays on your Mac (in `private/voice/`, git-ignored) and is deleted after 7 days. Only the text of a question or a transcript goes to Claude, through your own Claude Code login.

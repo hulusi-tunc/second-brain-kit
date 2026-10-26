@@ -269,7 +269,7 @@ struct QuickBody: View {
     VStack(spacing: 0) {
       HStack(spacing: 8) {
         tile("last", "text.bubble", "Last answer", "hold \(Shortcut.talk.glyph) + \(Shortcut.ask.glyph) to ask")
-        tile("folder", "folder", "Your brain", "open the folder")
+        tile("home", "circle.hexagongrid", "Brain Home", "the map, today, review")
         Button { model.onQuick?("more") } label: {
           Image(systemName: expanded ? "chevron.up" : "slider.horizontal.3").font(.system(size: 15, weight: .medium))
             .foregroundStyle(expanded ? Color.black : Color.white)

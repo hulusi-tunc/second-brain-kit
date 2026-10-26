@@ -5,7 +5,10 @@ import AppKit
 ///   brain:// links, for a Shortcut, Raycast, a Spotlight shortcut or a link in a note
 ///     brain://ask?q=what do I owe Sam       asks, the answer opens in the notch
 ///     brain://save?text=call Sam back       a note into raw/, like `brain "..."` in a terminal
-///     brain://page?path=wiki/sam.md         a page from the repo, in your .md app
+///     brain://home                          Brain Home, the dial, in its own window
+///     brain://page?path=wiki/sam.md         a page from the repo, read in Brain Home
+///     brain://done?id=c1234567              a ledger row done, as `brain done c1234567` in a terminal
+///     brain://ledger?v=keep&ids=c1,c2       Brain Home's review: done, keep, drop, or due with a date
 ///     brain://settings                      settings, in the notch
 ///
 ///   Services, in every app's right-click menu and the app menu (System Settings can give them keys)
@@ -18,6 +21,9 @@ final class Everywhere: NSObject {
   /// a short word in the notch after something was saved
   var onSaved: (() -> Void)?
   var onSettings: (() -> Void)?
+  var onHome: (() -> Void)?
+  var onPage: ((String) -> Void)?
+  var onDone: (() -> Void)?
 
   func handle(_ url: URL) {
     guard url.scheme?.lowercased() == "brain" else { return }
@@ -28,8 +34,22 @@ final class Everywhere: NSObject {
     switch host {
     case "ask":
       if let text = item("q", "question", "text"), !text.isEmpty { onAsk?(text) } else { onOpen?() }
+    case "home", "map":
+      onHome?()
     case "page":
-      if let path = item("path"), !path.isEmpty, !path.contains("..") { Brain.open(path) }
+      if let path = item("path"), !path.isEmpty, !path.contains("..") { onPage?(path) }
+    case "done":
+      guard let id = item("id"), id.range(of: "^c[0-9a-f]{7}$", options: .regularExpression) != nil else { return }
+      Everywhere.ledger("done", [id]); onDone?()
+    case "ledger":
+      let ids = (item("ids") ?? "").split(separator: ",").map(String.init)
+        .filter { $0.range(of: "^c[0-9a-f]{7}$", options: .regularExpression) != nil }
+      guard let v = item("v"), ["done", "keep", "drop", "due"].contains(v), !ids.isEmpty else { return }
+      // "due" moves rows to a new date (the sweep's "still on"); the date must be a plain day
+      let date = item("date").flatMap { $0.range(of: "^\\d{4}-\\d{2}-\\d{2}$", options: .regularExpression) != nil ? $0 : nil }
+      if v == "due" && date == nil { return }
+      Everywhere.ledger(v, ids, date: date)
+      if v == "done" { onDone?() }
     case "save", "note":
       if let text = item("text", "q", "note"), !text.isEmpty { Everywhere.save(text, from: "a link"); onSaved?() }
     case "settings":
@@ -53,6 +73,33 @@ final class Everywhere: NSObject {
     Everywhere.save(text, from: app)
     Log.write("everywhere: Save to Brain from \(app), \(text.count) chars")
     onSaved?()
+  }
+
+  /// Ledger rows changed from Brain Home: written to data/inbox.jsonl, then applied to commitments.md
+  /// by tools/apply_inbox.py once things go quiet for a moment, so ten quick clicks are one commit.
+  private static var flush: DispatchWorkItem?
+  private static var pending = 0
+  static func ledger(_ v: String, _ ids: [String], date: String? = nil) {
+    let repo = Config.repo
+    let at = ISO8601DateFormatter().string(from: Date())
+    let extra = date.map { ",\"date\":\"\($0)\"" } ?? ""
+    let lines = ids.map { "{\"t\":\"\(v)\",\"id\":\"\($0)\",\"at\":\"\(at)\",\"via\":\"Brain Home\"\(extra)}\n" }.joined()
+    let inbox = repo.appendingPathComponent("data/inbox.jsonl")
+    try? FileManager.default.createDirectory(at: inbox.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if let h = try? FileHandle(forWritingTo: inbox) { h.seekToEndOfFile(); h.write(Data(lines.utf8)); try? h.close() }
+    else { try? lines.write(to: inbox, atomically: true, encoding: .utf8) }
+    pending += ids.count
+    flush?.cancel()
+    let work = DispatchWorkItem {
+      let n = pending; pending = 0
+      let p = Process()
+      p.executableURL = URL(fileURLWithPath: "/bin/bash")
+      p.currentDirectoryURL = repo
+      p.arguments = ["-c", "python3 tools/apply_inbox.py && git add commitments.md data/inbox.jsonl && git commit -q -m 'ledger: \(n) row\(n == 1 ? "" : "s") from Brain Home' -- commitments.md data/inbox.jsonl"]
+      try? p.run()
+    }
+    flush = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5, execute: work)
   }
 
   /// A note into raw/<today>.md under the time, the same file and shape as `brain "..."` in a

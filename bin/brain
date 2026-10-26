@@ -8,9 +8,11 @@
 # brain resume           clear a usage-limit pause
 # brain login            log the jobs' Claude account in
 # brain slack ...        Slack workspaces this brain reads (add, ls, remove)
+# brain home             Brain Home, the map of your brain, in the browser (the Mac app has it in a window)
 SB="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"; RAW="$SB/raw"
 case "$1" in
   slack) shift; exec "$SB/bin/brain-slack.sh" "$@" ;;
+  home) python3 "$SB/home/collect.py" >/dev/null && open "$SB/home/index.html"; exit $? ;;
   health)
     . "$SB/bin/brain-lib.sh" health
     for f in "$HEALTH_DIR"/*; do [ -f "$f" ] || continue; read -r last n why < "$f"

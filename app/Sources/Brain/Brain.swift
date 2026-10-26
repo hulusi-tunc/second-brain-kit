@@ -86,10 +86,9 @@ enum Brain {
     }
   }
 
-  /// a page from the repo, opened in whatever app opens .md files (Obsidian, an editor)
-  static func open(_ relative: String) {
-    NSWorkspace.shared.open(Config.repo.appendingPathComponent(relative))
-  }
+  /// a page from the repo, read in Brain Home; set in main
+  static var onOpen: ((String) -> Void)?
+  static func open(_ relative: String) { onOpen?(relative) }
 }
 
 /// The text selected in the front app. First through Accessibility (Electron apps such as Slack

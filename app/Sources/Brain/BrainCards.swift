@@ -44,7 +44,7 @@ enum BrainCards {
       let f = Brain.fields(l) + Array(repeating: "", count: 5)
       return Card.Row(text: f[0], when: f[1], state: f[2].lowercased(), source: f[3], file: f[4].isEmpty ? "commitments.md" : f[4])
     }
-    let close = [Card.Button(id: "close", label: "Close"), Card.Button(id: "obsidian", label: "Open page", primary: true)]
+    let close = [Card.Button(id: "close", label: "Close"), Card.Button(id: "brain", label: "Open in Brain", primary: true)]
     switch kind {
     case "none":
       return Card(left: "Ask the brain", right: "nothing found",

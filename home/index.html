@@ -1,0 +1,1562 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Brain</title>
+<style>
+  /* Brain Home: the dial of your brain. Every name keeps its place and only its distance from the
+     middle changes (closer needs you more); the map is for going places, reading and acting happen in
+     the panel on the right. Clicking a name flies into it, its people and things gather around it;
+     what Brain filed since yesterday waits in Review for your yes. Follows the Mac's light or dark
+     look, Apple's system colours and glass, pink only where something is late. */
+  :root {
+    --bg: #f2f2f7; --bg2: #ffffff; --ink: #1d1d1f; --ink2: rgb(60 60 67 / 0.62); --ink3: rgb(60 60 67 / 0.32); --line: rgb(60 60 67 / 0.12);
+    --sheet: rgb(255 255 255 / 0.5); --card: rgb(255 255 255 / 0.62); --chip: rgb(118 118 128 / 0.1); --chip2: rgb(118 118 128 / 0.18);
+    --pink: #ff2d55; --pinkBg: rgb(255 45 85 / 0.1);
+    --glass: rgb(255 255 255 / 0.52); --solid: rgb(250 250 252 / 0.78);
+    --shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.9), inset 0 0 0 0.5px rgb(255 255 255 / 0.5), 0 0 0 0.5px rgb(0 0 0 / 0.1), 0 14px 44px -14px rgb(0 0 0 / 0.22);
+    --ease: cubic-bezier(0.23, 1, 0.32, 1); --slide: cubic-bezier(0.32, 0.72, 0, 1);
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) {
+    --bg: #000000; --bg2: #1c1c1e; --ink: #f5f5f7; --ink2: rgb(235 235 245 / 0.6); --ink3: rgb(235 235 245 / 0.28); --line: rgb(255 255 255 / 0.09);
+    --sheet: rgb(40 40 44 / 0.42); --card: rgb(255 255 255 / 0.06); --chip: rgb(118 118 128 / 0.22); --chip2: rgb(118 118 128 / 0.34);
+    --pink: #ff375f; --pinkBg: rgb(255 55 95 / 0.16);
+    --glass: rgb(44 44 48 / 0.48); --solid: rgb(36 36 40 / 0.82);
+    --shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 0 0 0.5px rgb(0 0 0 / 0.5), 0 22px 56px -18px rgb(0 0 0 / 0.75);
+  } }
+  :root[data-theme='dark'] {
+    --bg: #000000; --bg2: #1c1c1e; --ink: #f5f5f7; --ink2: rgb(235 235 245 / 0.6); --ink3: rgb(235 235 245 / 0.28); --line: rgb(255 255 255 / 0.09);
+    --sheet: rgb(40 40 44 / 0.42); --card: rgb(255 255 255 / 0.06); --chip: rgb(118 118 128 / 0.22); --chip2: rgb(118 118 128 / 0.34);
+    --pink: #ff375f; --pinkBg: rgb(255 55 95 / 0.16);
+    --glass: rgb(44 44 48 / 0.48); --solid: rgb(36 36 40 / 0.82);
+    --shadow: inset 0 0.5px 0 rgb(255 255 255 / 0.2), inset 0 0 0 0.5px rgb(255 255 255 / 0.1), 0 0 0 0.5px rgb(0 0 0 / 0.5), 0 22px 56px -18px rgb(0 0 0 / 0.75);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--ink);
+    font: 400 13px/19px system-ui, ui-sans-serif, sans-serif; -webkit-font-smoothing: antialiased; }
+  button { font: inherit; color: inherit; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; cursor: default; }
+  canvas.dragging { cursor: grabbing; }
+  a { color: inherit; }
+
+  /* ---------- the stage: what floats over the map */
+  .crumbs { position: fixed; top: 20px; left: 22px; display: flex; align-items: center; gap: 2px; height: 32px; padding: 3px; border-radius: 16px;
+    background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px) saturate(1.4);
+    opacity: 0; transform: translateY(-6px); pointer-events: none; transition: opacity 0.2s var(--ease), transform 0.3s var(--ease); }
+  .crumbs.on { opacity: 1; transform: none; pointer-events: auto; }
+  .crumbs button { height: 26px; padding: 0 10px; border: 0; border-radius: 13px; background: transparent; color: var(--ink2); font: 500 12px system-ui; cursor: pointer; white-space: nowrap; }
+  .crumbs button:hover { background: var(--chip); color: var(--ink); }
+  .crumbs button:last-child { color: var(--ink); }
+  .crumbs .sep { color: var(--ink3); font-size: 12px; }
+  .crumbs .home { display: inline-flex; align-items: center; gap: 6px; }
+
+  .dock { position: fixed; bottom: 20px; display: flex; gap: 8px; align-items: center; transform: translateX(-50%); }
+  .pills { display: flex; gap: 2px; padding: 3px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); }
+  .zoom { display: flex; gap: 2px; padding: 3px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); }
+  .zoom button { min-width: 28px; height: 28px; padding: 0 9px; border: 0; border-radius: 14px; background: transparent; color: var(--ink2); font: 500 13px system-ui; cursor: pointer; transition: background 0.15s ease, transform 0.12s ease; }
+  .zoom button:hover { background: var(--chip); color: var(--ink); }
+  .zoom button:active { transform: scale(0.94); }
+  .pill { height: 28px; padding: 0 11px; border-radius: 14px; border: 0; background: transparent; color: var(--ink2); font: 500 12px system-ui; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
+  .pill[aria-pressed='true'] { background: var(--chip2); color: var(--ink); }
+  .pill .sw { width: 8px; height: 8px; background: currentColor; opacity: 0.85; }
+  .time { display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 13px 0 3px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); }
+  .play { width: 28px; height: 28px; border-radius: 14px; border: 0; background: var(--chip); cursor: pointer; display: grid; place-items: center; transition: transform 0.12s ease; }
+  .play:active { transform: scale(0.94); }
+  .time .lbl { font: 500 12px system-ui; color: var(--ink2); }
+  .time input[type=range] { width: 170px; accent-color: var(--ink); }
+  .time .when { font: 500 12px system-ui; color: var(--ink); min-width: 46px; font-variant-numeric: tabular-nums; }
+
+  .filed { position: fixed; left: 22px; top: 20px; display: flex; align-items: center; gap: 10px; height: 34px; padding: 0 5px 0 13px; border: 0; border-radius: 17px;
+    background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); cursor: pointer; font: 500 12px system-ui; color: var(--ink2);
+    transition: opacity 0.2s ease, transform 0.3s var(--ease); }
+  .filed:active { transform: scale(0.97); }
+  .filed .dot { width: 7px; height: 7px; border-radius: 4px; background: var(--ink); }
+  .filed b { color: var(--ink); font-weight: 600; }
+  .filed .go { height: 24px; padding: 0 10px; border-radius: 12px; background: var(--ink); color: var(--bg); display: inline-flex; align-items: center; }
+  .filed.none, .filed.away { opacity: 0; pointer-events: none; transform: translateY(-6px); }
+  .hint { position: fixed; bottom: 66px; transform: translateX(-50%); font: 500 12px system-ui; color: var(--ink3); transition: opacity 0.6s ease; pointer-events: none; white-space: nowrap; }
+  .tip { position: fixed; pointer-events: none; padding: 6px 10px; border-radius: 10px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(16px);
+    font: 500 12px/16px system-ui; opacity: 0; transition: opacity 0.12s ease; max-width: 260px; z-index: 5; }
+  .tip .s { color: var(--ink2); font-weight: 400; }
+  .toast { position: fixed; top: 20px; transform: translate(-50%, -8px); opacity: 0; padding: 8px 14px; border-radius: 12px; background: var(--ink); color: var(--bg);
+    font: 500 12px system-ui; transition: opacity 0.2s ease, transform 0.25s var(--ease); pointer-events: none; z-index: 6; }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- the panel: one sheet on the right, tabs on top, the ask field always at the bottom.
+     Corners are concentric: sheet 26, padding 12, everything inside 14, a plate inside a 3 px track 11 */
+  .panel { position: fixed; top: 12px; right: 12px; bottom: 12px; width: 400px; border-radius: 26px; background: var(--sheet); box-shadow: var(--shadow);
+    backdrop-filter: blur(30px) saturate(1.5); display: flex; flex-direction: column; overflow: hidden; }
+  .phead { flex: none; display: flex; align-items: center; justify-content: space-between; padding: 12px 12px 0; }
+  .tabs { position: relative; display: flex; padding: 3px; border-radius: 14px; background: var(--chip); }
+  .tabs .plate { position: absolute; top: 3px; left: 0; height: 30px; border-radius: 11px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgb(0 0 0 / 0.08);
+    transition: transform 0.36s var(--slide), width 0.36s var(--slide); }
+  .tab { position: relative; height: 30px; padding: 0 14px; border: 0; background: transparent; color: var(--ink2); font: 500 13px system-ui; cursor: pointer; display: inline-flex; align-items: center; gap: 7px;
+    transition: color 0.2s ease; }
+  .tab[aria-selected='true'] { color: var(--ink); }
+  .tab .badge { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--ink); color: var(--bg); font: 600 11px/18px system-ui; font-variant-numeric: tabular-nums; }
+  .tab .badge:empty { display: none; }
+  .phead .when { font: 500 12px system-ui; color: var(--ink3); padding-right: 4px; font-variant-numeric: tabular-nums; }
+  .views { position: relative; flex: 1; min-height: 0; }
+  .view { position: absolute; inset: 0; overflow: auto; padding: 18px 12px 24px; scrollbar-width: none;
+    transition: opacity 0.24s var(--ease), transform 0.36s var(--slide); }
+  .view::-webkit-scrollbar { display: none; }
+  .view.off { opacity: 0; pointer-events: none; transform: translateX(-14px); }
+  .view.offr { opacity: 0; pointer-events: none; transform: translateX(22px); }
+  .pfoot { flex: none; position: relative; padding: 0 12px 12px; }
+  .pfoot::before { content: ''; position: absolute; left: 0; right: 0; bottom: 100%; height: 28px; background: linear-gradient(to top, var(--sheet), transparent); pointer-events: none; }
+  .askbar { display: flex; align-items: center; gap: 8px; min-height: 48px; padding: 6px 6px 6px 14px; border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 6px 18px -10px rgb(0 0 0 / 0.25); }
+  .askbar input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 14px system-ui; }
+  .askbar input::placeholder { color: var(--ink3); }
+  .askbar .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 4px 0 9px; border-radius: 9px; background: var(--chip2); font: 500 12px system-ui; max-width: 150px; }
+  .askbar .chip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .askbar .chip button { width: 18px; height: 18px; border: 0; border-radius: 9px; background: transparent; color: var(--ink2); cursor: pointer; line-height: 1; }
+  .askbar .chip[hidden] { display: none; }
+  .askbar .send { flex: none; width: 34px; height: 34px; border-radius: 10px; border: 0; background: var(--ink); color: var(--bg); cursor: pointer; display: grid; place-items: center; transition: transform 0.12s ease, opacity 0.15s ease; }
+  .askbar .send:active { transform: scale(0.94); }
+  .askbar .send:disabled { opacity: 0.25; cursor: default; }
+  .askbar kbd { flex: none; font: 500 11px/1 system-ui; color: var(--ink3); padding: 4px 7px; border-radius: 7px; box-shadow: inset 0 0 0 1px var(--line); }
+  .results { position: absolute; left: 12px; right: 12px; bottom: calc(100% - 4px); border-radius: 14px; padding: 4px; background: var(--card); box-shadow: var(--shadow);
+    opacity: 0; transform: translateY(6px); pointer-events: none; transition: opacity 0.16s ease, transform 0.22s var(--ease); }
+  .results.open { opacity: 1; transform: none; pointer-events: auto; }
+  .res { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 6px 10px; border-radius: 10px; cursor: pointer; }
+  .res[aria-selected='true'], .res:hover { background: var(--chip); }
+  .res .sh { flex: none; width: 9px; height: 9px; background: var(--ink); }
+  .res .nm { flex: 1; min-width: 0; font-weight: 500; }
+  .res .sn { display: block; font-size: 11.5px; line-height: 15px; color: var(--ink2); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .res .sn mark { background: none; color: var(--ink); font-weight: 600; }
+  .res .kd { font-size: 12px; color: var(--ink2); }
+
+  /* ---------- inside the panel */
+  .wd { font: 500 12px/16px system-ui; color: var(--ink2); padding: 0 6px; }
+  .date { font: 600 28px/32px system-ui; letter-spacing: -0.02em; margin-top: 2px; padding: 0 6px; }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 6px 8px; }
+  .sec h3 { margin: 0; font: 600 13px/18px system-ui; }
+  .sec .sub { font: 400 12px/16px system-ui; color: var(--ink2); }
+  .sec .act { border: 0; background: transparent; color: var(--ink2); font: 500 12px system-ui; cursor: pointer; padding: 0; }
+  .sec .act:hover { color: var(--ink); }
+  .box { border-radius: 14px; background: var(--card); box-shadow: 0 0 0 1px var(--line); }
+  .line { position: relative; width: 352px; height: 54px; margin: 14px 6px 0; }
+  .line .axis { position: absolute; left: 0; right: 0; top: 32px; height: 1px; background: var(--line); }
+  .line .hr { position: absolute; top: 38px; font: 500 10px/12px system-ui; color: var(--ink3); transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+  .line .bar { position: absolute; bottom: 22px; width: 3px; border-radius: 2px; background: var(--ink); opacity: 0.5; transform: translateX(-50%); }
+  .line .call { position: absolute; top: 4px; height: 10px; border-radius: 5px; background: var(--ink); cursor: pointer; }
+  .line .askd { position: absolute; top: 17px; width: 5px; height: 5px; border-radius: 3px; background: var(--pink); transform: translateX(-50%); }
+  .line .nowl { position: absolute; top: 0; bottom: 18px; width: 1px; background: var(--pink); }
+  .line .nowl::before { content: ''; position: absolute; top: -2px; left: -2.5px; width: 6px; height: 6px; border-radius: 3px; background: var(--pink); }
+  .sum { font-size: 12px; line-height: 16px; color: var(--ink2); margin: 2px 6px 0; }
+  .sum b { color: var(--ink); font-weight: 600; }
+  .week { display: flex; gap: 4px; margin: 12px 2px 0; }
+  .wk { flex: 1; padding: 6px 0 7px; border: 0; border-radius: 10px; text-align: center; cursor: pointer; background: transparent; transition: background 0.15s ease; }
+  .wk:hover, .wk[aria-pressed='true'] { background: var(--chip); }
+  .wk .l { font: 500 11px/14px system-ui; color: var(--ink2); }
+  .wk.today .l { color: var(--ink); font-weight: 600; }
+  .wk .bars { height: 18px; display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; margin-top: 4px; }
+  .wk .bars i { display: block; width: 14px; height: 3px; border-radius: 2px; background: var(--ink); opacity: 0.5; }
+  .wk .bars.none::after { content: ''; width: 3px; height: 3px; border-radius: 2px; background: var(--ink3); }
+  .counts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 3px; margin-top: 16px; border-radius: 14px; background: var(--chip); }
+  .count { padding: 9px 8px 9px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; text-align: left; transition: background 0.15s ease, transform 0.12s ease; }
+  .count:hover { background: var(--chip); }
+  .count:active { transform: scale(0.97); }
+  .count[aria-pressed='true'] { background: var(--card); box-shadow: 0 0 0 1px var(--line), 0 1px 3px rgb(0 0 0 / 0.08); }
+  .count .n { font: 600 19px/22px system-ui; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+  .count .t { font: 500 10.5px/13px system-ui; color: var(--ink2); margin-top: 2px; }
+  .count.pink .n { color: var(--pink); }
+
+  .it { display: flex; gap: 10px; align-items: flex-start; padding: 9px 10px 9px 8px; border-radius: 10px; }
+  .box .it + .it { box-shadow: 0 -1px 0 var(--line); }
+  .it .w { flex: 1; min-width: 0; }
+  .it .what { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .it a.what { text-decoration: none; }
+  .it a.what:hover { text-decoration: underline; text-decoration-color: var(--ink3); text-underline-offset: 3px; }
+  .it .meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 3px; font-size: 12px; line-height: 16px; color: var(--ink2); }
+  .it .meta .late { color: var(--pink); }
+  .node-chip { display: inline-flex; align-items: center; gap: 5px; height: 20px; padding: 0 7px; border: 0; border-radius: 6px; background: var(--chip); color: var(--ink); font: 500 11.5px system-ui; cursor: pointer; }
+  .node-chip:hover { background: var(--chip2); }
+  .node-chip .sh { width: 6px; height: 6px; background: currentColor; }
+  .ck { flex: none; width: 20px; height: 20px; margin-top: -1px; border-radius: 10px; border: 0; background: transparent; color: transparent; cursor: pointer; display: grid; place-items: center;
+    box-shadow: inset 0 0 0 1.5px var(--ink3); transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease; }
+  .ck:hover { color: var(--ink2); box-shadow: inset 0 0 0 1.5px var(--ink2); }
+  .ck.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+  .it.gone { opacity: 0; transition: opacity 0.2s ease, max-height 0.32s var(--ease) 0.12s, padding 0.32s var(--ease) 0.12s; max-height: 0 !important; padding-top: 0; padding-bottom: 0; overflow: hidden; }
+  .dot { flex: none; width: 7px; height: 7px; margin: 6px 2px 0 4px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px var(--ink3); }
+  .dot.overdue { background: var(--pink); box-shadow: none; }
+  .dot.due { box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .dot.done { background: var(--ink3); box-shadow: none; }
+  .wk { text-align: left; }
+  .wk .what.closed { color: var(--ink2); }
+  .wk .more { display: block; width: 100%; height: 36px; border: 0; background: transparent; color: var(--ink2); font: 500 12.5px system-ui; cursor: pointer; border-top: 1px solid var(--line); }
+  .wk .more:hover { color: var(--ink); }
+  .wk .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 6px; }
+
+  /* review */
+  .lede { margin: 2px 6px 0; font: 400 14px/20px system-ui; color: var(--ink2); }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .grp { margin-top: 12px; overflow: hidden; transition: opacity 0.25s ease, max-height 0.4s var(--ease), margin 0.4s var(--ease); }
+  .grp.gone { opacity: 0; max-height: 0 !important; margin-top: 0; }
+  .ghead { display: flex; align-items: center; gap: 8px; padding: 11px 10px 9px 12px; }
+  .ghead .src { flex: 1; min-width: 0; }
+  .ghead .ttl { font: 600 13px/17px system-ui; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; text-decoration: none; }
+  .ghead a.ttl:hover { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--ink3); }
+  .ghead .gk { font-size: 11.5px; color: var(--ink2); }
+  .btn { height: 26px; padding: 0 10px; border: 0; border-radius: 8px; background: var(--chip); color: var(--ink); font: 500 12px system-ui; cursor: pointer; white-space: nowrap; transition: background 0.15s ease, transform 0.12s ease; }
+  .btn:hover { background: var(--chip2); }
+  .btn:active { transform: scale(0.96); }
+  .btn.dark { background: var(--ink); color: var(--bg); }
+  .acts { flex: none; display: flex; gap: 4px; margin-top: -2px; }
+  .ib { width: 28px; height: 28px; border: 0; border-radius: 8px; background: transparent; color: var(--ink2); cursor: pointer; display: grid; place-items: center; transition: background 0.15s ease, color 0.15s ease, transform 0.12s ease; }
+  .ib:hover { background: var(--chip2); color: var(--ink); }
+  .ib:active { transform: scale(0.92); }
+  .ib.keep:hover { color: var(--ink); }
+  .quote { margin-top: 4px; padding-left: 9px; box-shadow: inset 2px 0 0 var(--line); color: var(--ink2); font-size: 12.5px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+  .empty { margin: 30px 6px; text-align: center; color: var(--ink2); }
+  .empty b { display: block; color: var(--ink); font: 600 15px/20px system-ui; margin-bottom: 4px; }
+
+  /* a node, pushed over the tab */
+  .ntop { display: flex; align-items: center; justify-content: space-between; margin: -6px 0 10px; }
+  .back { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 6px; border: 0; border-radius: 9px; background: transparent; color: var(--ink2); font: 500 12px system-ui; cursor: pointer; }
+  .back:hover { background: var(--chip); color: var(--ink); }
+  .openp { font: 500 12px system-ui; color: var(--ink2); text-decoration: none; padding: 5px 9px; border-radius: 9px; }
+  .openp:hover { background: var(--chip); color: var(--ink); }
+  .kind { font: 500 11.5px/14px system-ui; color: var(--ink2); padding: 0 6px; }
+  .nname { margin: 3px 6px 0; font: 600 24px/28px system-ui; letter-spacing: -0.02em; }
+  .nmeta { margin: 4px 6px 0; font-size: 12px; color: var(--ink2); }
+  .nmeta .late { color: var(--pink); }
+  .nowp { margin: 14px 6px 0; font-size: 13.5px; line-height: 20px; }
+  .tl { position: relative; height: 56px; margin: 0 6px; }
+  .tl .ax { position: absolute; left: 0; right: 0; top: 36px; height: 1px; background: var(--line); }
+  .tl .wkt { position: absolute; top: 33px; width: 1px; height: 7px; background: var(--ink3); opacity: 0.6; }
+  .tl .wl { position: absolute; top: 44px; transform: translateX(-50%); font: 500 10px/12px system-ui; color: var(--ink3); white-space: nowrap; }
+  .tl .cl { position: absolute; top: 8px; width: 4px; height: 18px; border-radius: 2px; background: var(--ink); transform: translateX(-50%); }
+  .tl .du { position: absolute; top: 31px; width: 9px; height: 9px; border-radius: 5px; transform: translateX(-50%); background: var(--sheet); box-shadow: inset 0 0 0 1.5px var(--ink); }
+  .tl .du.overdue { background: var(--pink); box-shadow: 0 0 0 2px var(--sheet); }
+  .tl .td { position: absolute; top: 2px; bottom: 18px; width: 1px; background: var(--pink); }
+  .tl .cl.soft { opacity: 0.35; }
+  .lgc, .lgd { display: inline-block; vertical-align: -1px; margin: 0 4px 0 8px; }
+  .lgc { width: 3px; height: 10px; border-radius: 2px; background: var(--ink); }
+  .lgd { width: 7px; height: 7px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px var(--ink2); vertical-align: 0; }
+  .conn { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 6px; }
+  .conn .node-chip { height: 26px; padding: 0 9px; border-radius: 8px; font-size: 12px; }
+  .conn .node-chip .k { color: var(--ink2); font-weight: 400; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  canvas:focus-visible { outline: none; }
+  @media (max-width: 899px) {
+    .panel { top: auto; left: 8px; right: 8px; bottom: 8px; width: auto; height: 46vh; border-radius: 22px; }
+    .filed, .hint { display: none; }
+    .dock { bottom: calc(46vh + 18px); }
+    .time input[type=range] { width: 90px; }
+    .line { width: calc(100% - 12px); }
+  }
+  .qc { position: fixed; z-index: 6; width: 330px; max-height: 70vh; overflow: auto; padding: 14px 14px 12px; border-radius: 18px; background: var(--solid); box-shadow: var(--shadow), 0 30px 60px -24px rgb(0 0 0 / 0.45);
+    opacity: 0; transform: scale(0.96); transform-origin: var(--ox, left) center; transition: opacity 0.18s ease, transform 0.25s var(--ease); scrollbar-width: none; }
+  .qc.on { opacity: 1; transform: none; }
+  .qc .qh { display: flex; align-items: center; gap: 11px; }
+  .qc .pic { width: 44px; height: 44px; flex: none; border-radius: 50%; background: var(--tint) center / cover no-repeat; position: relative; overflow: hidden; }
+  .qc .pic.thing { border-radius: 30%; display: grid; place-items: center; font: 650 15px system-ui; color: rgba(25,25,30,0.72); }
+  .qc .pic.sil::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 38%, rgba(30,30,40,.32) 0 18%, transparent 19%), radial-gradient(ellipse 34% 28% at 50% 100%, rgba(30,30,40,.32) 0 99%, transparent 100%); }
+  .qc .qn { flex: 1; min-width: 0; }
+  .qc .qn b { display: block; font: 600 15px/19px system-ui; }
+  .qc .qn span { font-size: 12px; color: var(--ink2); }
+  .qc .od { flex: none; padding: 3px 8px; border-radius: 9px; background: var(--pinkBg); color: var(--pink); font: 600 11.5px system-ui; }
+  .qc .x { flex: none; width: 26px; height: 26px; border: 0; border-radius: 13px; background: var(--chip); color: var(--ink2); cursor: pointer; }
+  .qc .rl { margin: 10px 0 2px; font-size: 13px; line-height: 18px; color: var(--ink); }
+  .qc ul { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; }
+  .qc li { padding: 8px 0; border-top: 1px solid var(--line); }
+  .qc li .w { display: flex; justify-content: space-between; font: 500 11px/14px system-ui; color: var(--ink3); }
+  .qc li .w .late { color: var(--pink); }
+  .qc li .t { margin-top: 2px; font-size: 12.5px; line-height: 17px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .qc .meta { margin-top: 6px; font-size: 11.5px; color: var(--ink3); }
+  .qc .go { margin-top: 12px; width: 100%; height: 34px; border: 0; border-radius: 11px; background: var(--ink); color: var(--bg); font: 500 12.5px system-ui; cursor: pointer; transition: transform 0.12s ease; }
+  .qc .go:active { transform: scale(0.98); }
+  .sweepgo { display: flex; align-items: center; gap: 10px; width: 100%; margin-top: 12px; padding: 12px 12px 12px 14px; border: 0; border-radius: 14px; text-align: left; cursor: pointer;
+    background: var(--pinkBg); color: var(--ink); transition: transform 0.12s ease, background 0.15s ease; }
+  .sweepgo:hover { background: color-mix(in oklab, var(--pink) 18%, transparent); }
+  .sweepgo:active { transform: scale(0.985); }
+  .sweepgo > span { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+  .sweepgo b { font: 600 13.5px system-ui; color: var(--pink); }
+  .sweepgo span span { font-size: 12px; color: var(--ink2); }
+  .sweepgo kbd, .swb kbd { font: 600 10.5px/1 ui-monospace, Menlo, monospace; padding: 4px 6px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); background: var(--card); }
+  .swp { position: fixed; z-index: 7; left: 50%; top: 50%; width: 520px; max-width: calc(100vw - 460px); padding: 18px 20px 14px; border-radius: 24px; background: var(--solid); box-shadow: var(--shadow), 0 40px 80px -30px rgb(0 0 0 / 0.5);
+    transform: translate(-50%, -46%) scale(0.97); opacity: 0; transition: opacity 0.22s ease, transform 0.36s var(--slide); }
+  .swp.on { opacity: 1; transform: translate(-50%, -50%); }
+  .swh { display: flex; align-items: center; gap: 10px; }
+  .swh b { font: 600 15px system-ui; }
+  .swh .swn { flex: 1; font: 500 12.5px system-ui; color: var(--ink2); font-variant-numeric: tabular-nums; }
+  .swp .x { width: 28px; height: 28px; border: 0; border-radius: 14px; background: var(--chip); color: var(--ink2); cursor: pointer; margin-left: auto; }
+  .swbar { height: 4px; margin: 12px 0 16px; border-radius: 2px; background: var(--chip2); overflow: hidden; }
+  .swbar i { display: block; height: 100%; background: var(--pink); border-radius: 2px; transition: width 0.4s var(--ease); }
+  .swc { animation: none; min-height: 168px; }
+  .swc.inr { animation: swin 0.28s var(--ease); } .swc.inl { animation: swinl 0.28s var(--ease); }
+  @keyframes swin { from { opacity: 0.2; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+  @keyframes swinl { from { opacity: 0.2; transform: translateX(-18px); } to { opacity: 1; transform: none; } }
+  .swwho { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sww { display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px 0 3px; border-radius: 15px; background: var(--chip); font: 500 12.5px system-ui; }
+  .sww .pic { width: 24px; height: 24px; flex: none; border-radius: 50%; background: var(--tint) center / cover no-repeat; position: relative; overflow: hidden; display: grid; place-items: center; font: 650 9px system-ui; color: rgba(25,25,30,.72); }
+  .sww .pic.thing { border-radius: 30%; }
+  .sww .pic.sil::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 50% 38%, rgba(30,30,40,.32) 0 18%, transparent 19%), radial-gradient(ellipse 34% 28% at 50% 100%, rgba(30,30,40,.32) 0 99%, transparent 100%); }
+  .swt { margin: 14px 0 8px; font: 500 18px/25px system-ui; letter-spacing: -0.01em; }
+  .swm { font-size: 12.5px; color: var(--ink2); }
+  .swseen { display: flex; gap: 9px; align-items: flex-start; margin: 0 0 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in oklab, var(--green, #34c759) 12%, transparent); font-size: 13px; line-height: 18px; color: var(--ink); }
+  .swseen > span:first-child { flex: none; width: 18px; height: 18px; border-radius: 9px; background: var(--green, #34c759); color: #fff; display: grid; place-items: center; font: 700 11px system-ui; margin-top: 0; }
+  .swseen a { color: var(--ink2); text-underline-offset: 3px; }
+  .swm .late { color: var(--pink); }
+  .swm a { color: var(--ink2); text-underline-offset: 3px; }
+  .swb { display: grid; grid-template-columns: 1fr 1.4fr 1fr; gap: 8px; margin-top: 18px; }
+  .swb button { display: flex; align-items: center; justify-content: center; gap: 8px; height: 42px; border: 0; border-radius: 13px; background: var(--chip); color: var(--ink); font: 500 13px system-ui; cursor: pointer; transition: transform 0.12s ease, background 0.15s ease; }
+  .swb button:hover { background: var(--chip2); }
+  .swb button:active { transform: scale(0.97); }
+  .swb button[data-sw="done"] { background: var(--ink); color: var(--bg); }
+  .swb button[data-sw="done"] kbd { background: transparent; color: var(--bg); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.3); }
+  .swnav { display: flex; justify-content: space-between; margin-top: 10px; }
+  .swnav button { border: 0; background: transparent; color: var(--ink3); font: 500 12px system-ui; cursor: pointer; padding: 4px 2px; }
+  .swnav button:hover:not(:disabled) { color: var(--ink); }
+  .swnav button:disabled { opacity: 0.35; cursor: default; }
+  .swend .big { margin: 18px 0 6px; font: 600 20px/26px system-ui; }
+  .swend .meta { font-size: 12.5px; color: var(--ink2); }
+  .swp .go { margin-top: 16px; width: 100%; height: 40px; border: 0; border-radius: 12px; background: var(--ink); color: var(--bg); font: 500 13px system-ui; cursor: pointer; }
+  .qc .tr { display: flex; gap: 10px; align-items: flex-start; margin-top: 2px; }
+  .qc .tr .t { flex: 1; color: var(--ink); text-decoration: none; }
+  .qc .tr .t:hover { text-decoration: underline; text-decoration-color: var(--ink3); text-underline-offset: 3px; }
+  .qc .qd { flex: none; width: 22px; height: 22px; margin-top: -1px; border: 0; border-radius: 11px; background: transparent; color: transparent; cursor: pointer; display: grid; place-items: center; box-shadow: inset 0 0 0 1.5px var(--ink3); transition: background 0.15s ease, color 0.15s ease; }
+  .qc .qd:hover { color: var(--ink2); box-shadow: inset 0 0 0 1.5px var(--ink2); }
+  .qc .qd.on { background: var(--ink); color: var(--bg); box-shadow: none; }
+  .qc .qd.qdr { color: var(--ink3); box-shadow: none; }
+  .qc .qd.qdr:hover { color: var(--ink); background: var(--chip); }
+  .qc li { transition: opacity 0.25s ease; }
+  .qc li.gone { opacity: 0; }
+  .qc .gos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .qc .gos .go { margin: 0; }
+  .qc .ask2 { height: 34px; border: 0; border-radius: 11px; background: var(--chip); color: var(--ink); font: 500 12.5px system-ui; cursor: pointer; }
+  .qc .ask2:hover { background: var(--chip2); }
+  @media (prefers-reduced-motion: reduce) { .swp, .swc, .swbar i, .qc li { transition: none !important; animation: none !important; } }
+  /* glass: everything that floats over the dial blurs and lifts what is behind it */
+  html, body { font-family: system-ui, -apple-system, sans-serif; letter-spacing: -0.005em; }
+  .panel, .qc, .swp, .crumbs, .pills, .time, .zoom, .filed, .results, .tip { background: var(--glass) !important; -webkit-backdrop-filter: blur(36px) saturate(190%); backdrop-filter: blur(36px) saturate(190%); box-shadow: var(--shadow) !important; }
+  .qc, .swp { background: var(--solid) !important; }
+  .panel { border-radius: 30px; }
+  .tabs { background: var(--chip); }
+  .tabs .plate { background: var(--bg2); box-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 0 0 0.5px rgb(0 0 0 / 0.04); }
+  .count[aria-pressed='true'] { background: var(--bg2); }
+  .box { background: var(--card); box-shadow: inset 0 0 0 0.5px var(--line); }
+  .askbar { background: var(--card); box-shadow: inset 0 0 0 0.5px var(--line); }
+  .askbar .send, .qc .go, .swp .go, .swb button[data-sw="done"], .filed .go { background: var(--ink); color: var(--bg2); }
+  .sweepgo { background: var(--chip); }
+  .sweepgo b { color: var(--ink); }
+  .filed .dot { background: var(--pink); }
+  .qc .pic, .sww .pic { background-color: #9ea3ac; background-image: linear-gradient(#b6bac2, #8b9099); }
+  .qc .pic.sil::after, .sww .pic.sil::after { background: radial-gradient(circle at 50% 38%, rgba(255,255,255,.92) 0 18%, transparent 19%), radial-gradient(ellipse 34% 28% at 50% 100%, rgba(255,255,255,.92) 0 99%, transparent 100%); }
+  .qc .pic.thing, .sww .pic { color: #fff; }
+  .line .askd, .line .nowl, .line .nowl::before { background: var(--pink); }
+  .pill .sw { background: currentColor; }
+  /* inside Brain's window: clear page on the window's glass, room for the traffic lights and the drag strip */
+  .native.clear, .native.clear body { background: transparent; }
+  .native .panel { top: 40px; }
+  .native .filed, .native .crumbs { top: 42px; }
+  button.openp { border: 0; background: transparent; cursor: pointer; font: 500 12px system-ui; color: var(--ink2); }
+  button.openp:hover { background: var(--chip); color: var(--ink); }
+  .aq { margin: 4px 6px 0; font: 500 11.5px system-ui; color: var(--ink3); }
+  .aqt { margin: 3px 6px 0; font: 600 17px/23px system-ui; letter-spacing: -0.01em; }
+  .asteps { margin: 12px 6px 0; display: flex; flex-direction: column; gap: 7px; }
+  .ast { display: flex; align-items: center; gap: 9px; font-size: 12.5px; line-height: 16px; color: var(--ink2); }
+  .ast i { flex: none; width: 6px; height: 6px; border-radius: 3px; background: var(--ink3); }
+  .ast.now i { background: var(--ink); animation: apulse 1s ease-in-out infinite; }
+  .ast em { font-style: normal; color: var(--ink3); margin-left: auto; font-variant-numeric: tabular-nums; }
+  @keyframes apulse { 50% { opacity: 0.25; } }
+  .athink { display: flex; align-items: center; gap: 8px; margin: 14px 6px 0; font-size: 12.5px; color: var(--ink2); }
+  .athink .dots { display: inline-flex; gap: 3px; } .athink .dots i { width: 4px; height: 4px; border-radius: 2px; background: var(--ink2); animation: apulse 1.1s ease-in-out infinite; }
+  .athink .dots i:nth-child(2) { animation-delay: 0.15s; } .athink .dots i:nth-child(3) { animation-delay: 0.3s; }
+  .astop { margin-left: auto; height: 24px; padding: 0 10px; border: 0; border-radius: 12px; background: var(--chip); color: var(--ink2); font: 500 12px system-ui; cursor: pointer; }
+  .atrace { margin: 10px 6px 0; font-size: 12px; color: var(--ink3); }
+  .atrace summary { cursor: pointer; list-style: none; } .atrace summary::-webkit-details-marker { display: none; }
+  .atrace summary::before { content: '›'; display: inline-block; margin-right: 6px; transition: transform 0.2s var(--ease); }
+  .atrace[open] summary::before { transform: rotate(90deg); }
+  .ahead { margin: 14px 6px 0; font: 600 19px/25px system-ui; letter-spacing: -0.015em; }
+  .anote { margin: 8px 6px 0; font-size: 13.5px; line-height: 20px; color: var(--ink); }
+  .arows { margin-top: 12px; }
+  .arow { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px 9px 26px; position: relative; text-decoration: none; color: var(--ink); border-radius: 10px; }
+  .arow + .arow { box-shadow: 0 -0.5px 0 var(--line); }
+  .arow:hover { background: var(--chip); }
+  .arow .ad { position: absolute; left: 11px; top: 15px; width: 7px; height: 7px; border-radius: 4px; box-shadow: inset 0 0 0 1.5px var(--ink3); }
+  .arow .ad.overdue { background: var(--pink); box-shadow: none; } .arow .ad.done { background: var(--ink3); box-shadow: none; }
+  .arow .ai { font-size: 13px; line-height: 18px; }
+  .arow .aw { font-size: 11.5px; color: var(--ink2); display: flex; gap: 8px; } .arow .aw b { font-weight: 500; color: var(--ink3); }
+  .alit { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 14px 6px 0; }
+  .alit > span { font: 500 11.5px system-ui; color: var(--ink3); margin-right: 2px; }
+  .aold { opacity: 0.6; padding-bottom: 14px; margin-bottom: 12px; border-bottom: 0.5px solid var(--line); }
+  .aold .ahead { font-size: 15px; line-height: 20px; }
+  @media (prefers-reduced-motion: reduce) { .ast.now i, .athink .dots i { animation: none; } }
+  .still *, .still *::before { transition: none !important; animation: none !important; }
+  /* ⌘K: no open or close animation, it is used all day (Raycast's rule) */
+  .kbar { position: fixed; z-index: 20; left: 50%; top: 14vh; width: 600px; max-width: calc(100vw - 32px); transform: translateX(-50%); border-radius: 18px; background: var(--solid); box-shadow: var(--shadow), 0 40px 90px -30px rgb(0 0 0 / 0.5); overflow: hidden;
+    -webkit-backdrop-filter: blur(40px) saturate(190%); backdrop-filter: blur(40px) saturate(190%); }
+  .kin { display: flex; align-items: center; gap: 10px; padding: 0 14px 0 16px; height: 52px; border-bottom: 1px solid var(--line); color: var(--ink2); }
+  .kin input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 17px system-ui; }
+  .kbar kbd { font: 600 10.5px/1 ui-monospace, Menlo, monospace; padding: 4px 6px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); }
+  .klist { max-height: min(420px, 56vh); overflow-y: auto; padding: 6px; }
+  .kgrp { padding: 8px 10px 4px; font: 600 11px system-ui; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink3); }
+  .kit { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 7px 10px; border-radius: 10px; cursor: pointer; }
+  .kit[aria-selected="true"] { background: var(--chip2); }
+  .kit .sh { flex: none; width: 10px; height: 10px; background: var(--ink3); }
+  .kit .ki { flex: none; width: 18px; text-align: center; color: var(--ink2); font: 500 13px system-ui; }
+  .kit .kt { flex: 1; min-width: 0; font: 400 14px/18px system-ui; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .kit .kt small { color: var(--ink2); font-size: 12.5px; margin-left: 6px; }
+  .kit .kk { flex: none; color: var(--ink3); font: 500 12px system-ui; }
+  .kit .late { color: var(--pink); }
+  .kfoot { display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 9px 16px; border-top: 1px solid var(--line); color: var(--ink3); font: 400 12px system-ui; }
+  .kfoot b { color: var(--ink2); font-weight: 600; }
+  .kempty { padding: 18px 12px; color: var(--ink2); font-size: 13.5px; }
+  @media (prefers-reduced-motion: reduce) { .view, .tabs .plate, .crumbs, .results, .toast, .hint, .grp, .it.gone { transition: none !important; } }
+</style>
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="Your brain as a dial. Every name keeps its place; the closer to the middle, the more it needs you. Arrow keys move, return flies into a name, slash asks."></canvas>
+<ul class="sr" id="sr" aria-label="Everything in your brain"></ul>
+<nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="hint" id="hint" hidden></div>
+<button class="filed" id="filed"></button>
+<div class="dock" id="dock">
+  <div class="zoom"><button id="zout" aria-label="Zoom out">−</button><button id="fit" aria-label="See everything">Fit</button><button id="zin" aria-label="Zoom in">+</button></div>
+  <div class="pills" id="pills"></div>
+  <div class="time"><button class="play" id="play" aria-label="Play the last seven weeks"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5v14l12-7z"/></svg></button>
+    <span class="lbl">Rewind</span><input type="range" id="t" min="0" max="100" value="100" aria-label="Rewind to a day"><span class="when" id="when"></span></div>
+</div>
+<aside class="panel" id="panel">
+  <div class="phead">
+    <div class="tabs" role="tablist" id="tabs"><span class="plate" id="plate"></span>
+      <button class="tab" role="tab" data-tab="today" aria-selected="true">Today</button>
+      <button class="tab" role="tab" data-tab="week" aria-selected="false">Week</button>
+      <button class="tab" role="tab" data-tab="review" aria-selected="false">Review<span class="badge" id="rbadge"></span></button>
+    </div>
+    <span class="when" id="asof"></span>
+  </div>
+  <div class="views">
+    <section class="view" id="v-today" role="tabpanel"></section>
+    <section class="view offr" id="v-week" role="tabpanel"></section>
+    <section class="view offr" id="v-review" role="tabpanel"></section>
+    <section class="view offr" id="v-node" aria-live="polite"></section>
+    <section class="view offr" id="v-ask" aria-live="polite"></section>
+  </div>
+  <div class="pfoot">
+    <div class="results" id="results" role="listbox"></div>
+    <div class="askbar"><span class="chip" id="chip" hidden><span id="chipt"></span><button aria-label="Ask about everything">×</button></span>
+      <input id="q" placeholder="Ask Brain or find anything" autocomplete="off" aria-label="Ask Brain or find anything"><kbd id="kbd">/</kbd>
+      <button class="send" id="send" aria-label="Ask Brain" disabled><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 19V5M5.5 11.5 12 5l6.5 6.5"/></svg></button></div>
+  </div>
+</aside>
+<div class="kbar" id="kbar" role="dialog" aria-label="Command bar" hidden>
+  <div class="kin"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>
+    <input id="kq" placeholder="Jump to anyone, or type done, ask" autocomplete="off" aria-label="Command" aria-controls="klist"><kbd>esc</kbd></div>
+  <div class="klist" id="klist" role="listbox"></div>
+  <div class="kfoot"><span><kbd>↵</kbd> go</span><span><b>done</b> close a row</span><span><b>ask</b> Brain</span></div>
+</div>
+<div class="tip" id="tip"></div>
+<div class="qc" id="qc" role="dialog" aria-live="polite" hidden></div>
+<section class="swp" id="sw" role="dialog" aria-label="Overdue sweep" hidden></section>
+<script src="data.js"></script>
+<script>
+(() => {
+  const B = window.BRAIN
+  const qs = new URLSearchParams(location.search)
+  // ?still=1: everything in its place at once (for pictures; also what Reduce Motion gets)
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches || qs.has('still')
+  if (qs.get('theme')) document.documentElement.dataset.theme = qs.get('theme')
+  if (qs.has('still')) document.documentElement.classList.add('still')
+  const NATIVE = qs.has('native')
+  // ?fakeask: a stand-in for Brain's channel, for pictures of the answer view only
+  if (qs.has('fakeask')) window.webkit = { messageHandlers: { brain: { postMessage() {} } } }
+  if (NATIVE) document.documentElement.classList.add('native')
+  if (NATIVE && qs.has('clear')) document.documentElement.classList.add('clear')
+  const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim()
+  const $ = (id) => document.getElementById(id)
+  const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+  const MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const WD = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+  const D = (s) => new Date(s + 'T12:00')
+  const fmt = (d) => `${d.getDate()} ${MON[d.getMonth()]}`
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const today = D(B.today)
+  const daysAgo = (s) => Math.round((today - D(s)) / 864e5)
+  const between = (a, b) => Math.round((D(b) - D(a)) / 864e5)
+  const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const KIND = { person: 'Person', project: 'Project', company: 'Company', topic: 'Topic', you: 'You' }
+  const SHAPE = { person: 'border-radius:5px', company: 'border-radius:2px', project: 'border-radius:2.5px', topic: 'border-radius:5px;background:none;box-shadow:inset 0 0 0 1.5px currentColor' }
+  const obs = (rel) => 'obsidian://open?path=' + encodeURIComponent(B.root + '/' + rel)
+  const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} } }
+
+  // ---------- the nodes, and how alive each was on a given day (the rewind): calls naming it in
+  // the 14 days before, what was overdue by then, and today also what is open and written lately
+  const byId = {}
+  function actAt(n, t) {
+    if (n.kind === 'you') return 1
+    const met = (n.metDates || []).filter((d) => d <= t && between(d, t) <= 14).length
+    const over = (n.dues || []).filter((d) => d < t).length
+    const now = t === B.today
+    return Math.min(1, met * 0.22 + (over ? 0.25 + over * 0.03 : 0) + (now ? (n.open || 0) * 0.07 + Math.max(0, 7 - daysAgo(n.lastTouched)) * 0.02 : 0))
+  }
+  const N = B.nodes.map((n) => {
+    const o = { ...n, x: 0, y: 0, tx: 0, ty: 0, side: 1, show: 0, want: 0, hv: 0, label: n.title.replace(/\s*\(.*?\)/, ''), row: null }
+    o.firstSeen = [o.born, ...(o.metDates || [])].sort()[0]
+    o.act = actAt(o, B.today)
+    byId[n.id] = o
+    return o
+  })
+  const you = N.find((n) => n.kind === 'you')
+  you.want = you.show = 1
+  const E = B.edges.filter((e) => byId[e.a] && byId[e.b]).map((e) => ({ a: byId[e.a], b: byId[e.b], w: e.w }))
+  const nbr = {}
+  E.forEach((e) => { (nbr[e.a.id] ||= new Set()).add(e.b.id); (nbr[e.b.id] ||= new Set()).add(e.a.id) })
+  // who and what a thing is close to: its wiki links, and twice as much, the calls they shared
+  function neighbors(n) {
+    const w = new Map()
+    for (const id of nbr[n.id] || []) w.set(id, (w.get(id) || 0) + 1)
+    for (const m of B.meetings) if (m.nodes.includes(n.id)) for (const id of m.nodes) if (id !== n.id) w.set(id, (w.get(id) || 0) + 2)
+    return [...w.entries()].map(([id, k]) => ({ m: byId[id], k })).filter((x) => x.m && x.m !== you && (x.m.firstSeen || x.m.born) <= asOf)
+      .sort((a, b) => b.k - a.k || b.m.act - a.m.act)
+  }
+
+  const ROW = 21, ST = [0.5, 0.7, 0.88], BAND = 0.036, LABEL = 12, GAP = 12, CORE = 24
+  const TIERNAME = ['Needs you now', 'This week', 'Quiet']
+  const on = { person: true, project: true, company: true, topic: false }
+  let rows = { L: [], R: [] }, halfSpan = 200, R = 300
+  const rim = (side, y) => ({ x: side * Math.sqrt(Math.max(0, R * R - y * y)), y })
+  const byLabel = (a, b) => a.label.localeCompare(b.label)
+  let heads = []
+  const polar = (side, ang, r) => ({ x: side * Math.sin(ang) * r, y: -Math.cos(ang) * r })
+  function dial() {
+    N.forEach((n) => { n.row = null })
+    const all = (k) => N.filter((n) => n.kind === k).sort(byLabel)
+    heads = []
+    for (const [groups, side] of [[[['People', all('person')]], -1], [[['Companies', all('company')], ['Projects', all('project')]], 1]]) {
+      const slots = groups.reduce((s, g) => s + g[1].length, 0) + (groups.length - 1) * 1.5
+      const A0 = 0.09 * Math.PI, A1 = 0.91 * Math.PI, at = (k) => A0 + ((A1 - A0) * k) / Math.max(1, slots - 1)
+      let k = 0, i = 0
+      for (const [title, list] of groups) {
+        heads.push({ side, ang: at(k), text: title, count: list.length })
+        list.forEach((n) => { n.row = { ang: at(k), odd: i % 2, side }; n.side = side; k++; i++ })
+        k += 1.5
+      }
+    }
+    R = 520
+  }
+  function tiers() {
+    // by rank, not threshold: the inner ring holds the few that matter most on each side
+    for (const side of [-1, 1]) {
+      const list = N.filter((n) => n !== you && n.row && n.want && n.side === side)
+      const ranked = [...list].sort((a, b) => b.act - a.act || (b.overdue || 0) - (a.overdue || 0) || byLabel(a, b))
+      const t0n = Math.min(8, Math.ceil(ranked.length * 0.28)), t1n = Math.ceil(ranked.length * 0.36)
+      ranked.forEach((n, i) => { n.tierNow = i < t0n ? 0 : i < t0n + t1n ? 1 : 2 })
+    }
+    // the web inside: who and what met together in the two weeks before, and links between the near ones
+    const pairs = new Map()
+    const add = (a, b, w) => { if (!a || !b || a === b || !a.row || !b.row || !a.want || !b.want) return; const k = a.id < b.id ? a.id + '|' + b.id : b.id + '|' + a.id; const p = pairs.get(k) || { a, b, w: 0 }; p.w += w; pairs.set(k, p) }
+    for (const m of B.meetings) if (m.date <= asOf && between(m.date, asOf) <= 14) { const ns = m.nodes.slice(0, 10).map((id) => byId[id]); ns.forEach((a, i) => ns.slice(i + 1).forEach((b) => add(a, b, 1))) }
+    for (const e of E) if ((e.a.tierNow ?? 2) === 0 && (e.b.tierNow ?? 2) === 0) add(e.a, e.b, 0.5)
+    web = [...pairs.values()].sort((p, q) => q.w - p.w).slice(0, 180)
+  }
+  let web = []
+  // each ring is a band: neighbours on the rim sit a little in or out, so their dots never touch
+  const home = (n) => n.row ? polar(n.side, n.row.ang, (ST[n.tierNow ?? 2] + (n.row.odd ? BAND : -BAND) * 0.8) * R) : { x: 0, y: 0 }
+
+  // ---------- flying into a name: it stays where it is, the camera comes close, and the people
+  // and things it is close to gather around it (people on its left, the rest on its right). Hop
+  // from one to the next; the trail at the top walks back. Leaving, everyone flies home.
+  let trail = [], egoN = null, egoK = 0
+  const egoPos = new Map()
+  const ER = 230
+  function gather(n) {
+    egoPos.clear(); egoN = n
+    if (!n) return
+    const F = home(n)
+    const list = neighbors(n).slice(0, 14)
+    const left = list.filter((x) => x.m.kind === 'person').sort((a, b) => byLabel(a.m, b.m))
+    const right = list.filter((x) => x.m.kind !== 'person').sort((a, b) => byLabel(a.m, b.m))
+    const spread = (arr, a0, a1) => arr.forEach((x, i) => {
+      const a = arr.length === 1 ? (a0 + a1) / 2 : a0 + ((a1 - a0) * i) / (arr.length - 1)
+      egoPos.set(x.m, { x: F.x + Math.cos(a) * ER * 1.3, y: F.y + Math.sin(a) * ER, k: x.k, side: Math.cos(a) < 0 ? -1 : 1 })
+    })
+    const wideL = left.length > 7 ? 0.42 : 0.3, wideR = right.length > 7 ? 0.42 : 0.3
+    spread(left, Math.PI * (1 + wideL), Math.PI * (1 - wideL))
+    spread(right, -Math.PI * wideR, Math.PI * wideR)
+  }
+  function place() {
+    for (const n of N) {
+      if (n === you) continue
+      const p = egoPos.get(n)
+      if (p) { n.tx = p.x; n.ty = p.y } else { const h = home(n); n.tx = h.x; n.ty = h.y }
+      if (!n.placed) { n.x = n.tx * 0.6; n.y = n.ty; n.placed = true }
+      const known = (n.firstSeen || n.born) <= asOf
+      n.want = known && ((n.row && on[n.kind]) || egoPos.has(n)) ? 1 : 0
+    }
+  }
+
+  // ---------- the stage: the map's room is the window minus the panel
+  const cv = $('c'), cx = cv.getContext('2d')
+  let W = 0, H = 0, dpr = 1, wide = true
+  const stage = { w: 0, h: 0, cx: 0, cy: 0 }
+  const cam = { x: 0, y: 0, z: 1 }, camTo = { x: 0, y: 0, z: 1 }
+  let homeZ = 1, fitZ = 1, moved = false
+  function measure() {
+    dpr = Math.min(2, devicePixelRatio || 1); W = innerWidth; H = innerHeight; cv.width = W * dpr; cv.height = H * dpr
+    wide = W >= 900
+    stage.w = wide ? W - 424 : W; stage.h = wide ? H : H * 0.54 - 8
+    stage.cx = stage.w / 2; stage.cy = stage.h / 2 - (wide ? 6 : 0)
+    fitZ = Math.max(0.3, Math.min(1.3, Math.min((stage.w - 60) / (2 * (R + 90)), (stage.h - 150) / (2 * R + 110))))
+    // home is a little closer than fitting it all: the edges run off the screen, there is more to walk to
+    homeZ = fitZ * 1.18
+    for (const el of [$('dock'), $('hint'), $('toast'), $('sw')]) el.style.left = stage.cx + 'px'
+    aim()
+  }
+  addEventListener('resize', measure)
+  function aim() {
+    if (egoN) {
+      const F = home(egoN)
+      camTo.x = F.x; camTo.y = F.y
+      // close enough to read, never so close the gathered names leave the room (names are 12 px at any zoom)
+      camTo.z = Math.max(0.8, Math.min(1.7, (stage.w / 2 - 215) / (ER * 1.3), (stage.h / 2 - 110) / ER))
+    } else if (!moved) { camTo.x = 0; camTo.y = 0; camTo.z = homeZ }
+  }
+  const S = (x, y) => [stage.cx + (x - cam.x) * cam.z, stage.cy + (y - cam.y) * cam.z]
+
+  // ---------- input on the map
+  let hover = null, drag = null, lit = null, litLabel = '', kb = null
+  function hit(px, py) {
+    let best = null, bd = Infinity
+    for (const n of N) {
+      if (n.show < 0.5) continue
+      for (const b of [n.box, n.dbox]) if (b && px >= b.x0 && px <= b.x1 && py >= b.y0 && py <= b.y1) { const d = Math.abs(py - (b.y0 + b.y1) / 2); if (d < bd) { bd = d; best = n } }
+    }
+    return best
+  }
+  cv.addEventListener('pointermove', (e) => {
+    if (drag) {
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y
+      if (Math.hypot(dx, dy) > 3) drag.moved = true
+      if (drag.moved) { moved = true; cam.x = camTo.x = drag.cx - dx / cam.z; cam.y = camTo.y = drag.cy - dy / cam.z }
+      return
+    }
+    const h = hit(e.clientX, e.clientY)
+    if (h !== hover) { hover = h; tipFor(h) }
+    if (h) moveTip(e)
+    cv.style.cursor = h ? 'pointer' : 'default'
+  })
+  cv.addEventListener('pointerleave', () => { hover = null; tipFor(null) })
+  cv.addEventListener('pointerdown', (e) => { drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y, moved: false }; seen() })
+  addEventListener('pointerup', (e) => {
+    cv.classList.remove('dragging')
+    if (drag && !drag.moved && e.target === cv) { const n = hit(e.clientX, e.clientY); if (egoN) { if (n) fly(n, true) } else quick(n && n !== quickN ? n : null) }
+    drag = null
+  })
+  // walk it like Figma: two fingers move you any way, a pinch (or cmd + scroll) zooms where you point
+  function zoomAt(px, py, k) {
+    const wx = (px - stage.cx) / cam.z + cam.x, wy = (py - stage.cy) / cam.z + cam.y
+    moved = true; cam.z = camTo.z = Math.max(fitZ * 0.5, Math.min(4, cam.z * k))
+    cam.x = camTo.x = wx - (px - stage.cx) / cam.z; cam.y = camTo.y = wy - (py - stage.cy) / cam.z
+  }
+  cv.addEventListener('wheel', (e) => {
+    e.preventDefault(); seen()
+    if (e.ctrlKey || e.metaKey) return zoomAt(e.clientX, e.clientY, Math.exp(-e.deltaY * (e.ctrlKey ? 0.012 : 0.003)))
+    moved = true; cam.x = camTo.x = cam.x + e.deltaX / cam.z; cam.y = camTo.y = cam.y + e.deltaY / cam.z
+  }, { passive: false })
+  $('zin').addEventListener('click', () => zoomAt(stage.cx, stage.cy, 1.4))
+  $('zout').addEventListener('click', () => zoomAt(stage.cx, stage.cy, 1 / 1.4))
+  $('fit').addEventListener('click', () => { if (egoN) fly(null); camTo.x = 0; camTo.y = 0; camTo.z = fitZ })
+  addEventListener('keydown', (e) => {
+    if (document.activeElement === q || document.activeElement?.id === 'kq') return
+    if (e.key === '=' || e.key === '+') zoomAt(stage.cx, stage.cy, 1.4)
+    if (e.key === '-') zoomAt(stage.cx, stage.cy, 1 / 1.4)
+    if (e.key === '0') { camTo.x = 0; camTo.y = 0; camTo.z = fitZ }
+  })
+  cv.addEventListener('dblclick', (e) => { if (!hit(e.clientX, e.clientY)) fly(null) })
+
+  // fly(n, hop): into a name (a hop from the one you are in adds to the trail), or home with null
+  function fly(n, hop) {
+    if (n === you) n = null
+    if (!n) { trail = []; moved = false }
+    else if (hop && egoN) { const i = trail.indexOf(n); trail = i >= 0 ? trail.slice(0, i + 1) : [...trail, n] }
+    else trail = [n]
+    gather(n); place(); aim(); lightOff(); showNode(n); crumbs(); seen()
+    $('filed').classList.toggle('away', !!n)
+    kb = n || kb
+  }
+  function crumbs() {
+    const el = $('crumbs')
+    el.classList.toggle('on', trail.length > 0)
+    if (!trail.length) return
+    el.innerHTML = `<button data-i="-1" class="home"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="10" width="4.5" height="4.5" rx="1.4"/><rect x="9.8" y="4" width="4.5" height="4.5" rx="1.4"/><rect x="9.8" y="10" width="4.5" height="4.5" rx="1.4"/><rect x="9.8" y="16" width="4.5" height="4.5" rx="1.4"/><rect x="16.6" y="10" width="4.5" height="4.5" rx="1.4"/></svg>Brain</button>` +
+      trail.map((n, i) => `<span class="sep">›</span><button data-i="${i}">${esc(n.label)}</button>`).join('')
+  }
+  $('crumbs').addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return
+    const i = +b.dataset.i
+    if (i < 0) return fly(null)
+    trail = trail.slice(0, i + 1); const n = trail[i]
+    gather(n); place(); aim(); showNode(n); crumbs()
+  })
+
+  // ---------- which kinds show, and since when
+  const pills = $('pills')
+  pills.innerHTML = [['person', 'People'], ['project', 'Projects'], ['company', 'Companies']].map(([k, l]) => `<button class="pill" data-k="${k}" aria-pressed="${on[k]}"><span class="sw" style="${SHAPE[k]}"></span>${l}</button>`).join('')
+  pills.addEventListener('click', (e) => { const b = e.target.closest('.pill'); if (!b) return; on[b.dataset.k] = !on[b.dataset.k]; b.setAttribute('aria-pressed', on[b.dataset.k]); relayout(true) })
+  const t0 = D([...B.nodes.map((n) => n.born), ...B.meetings.map((m) => m.date)].reduce((m, d) => (d < m ? d : m), B.today)), span = Math.max(1, Math.round((today - t0) / 864e5))
+  const tEl = $('t'), whenEl = $('when')
+  tEl.max = span; tEl.value = span
+  let shownTo = span, asOf = B.today
+  function relayout(rows) {
+    asOf = shownTo >= span ? B.today : iso(new Date(t0.getTime() + shownTo * 864e5))
+    N.forEach((n) => { if (n !== you) { n.act = actAt(n, asOf); n.met = (n.metDates || []).filter((d) => d <= asOf && between(d, asOf) <= 14).length } })
+    if (rows) { dial(); measure() }
+    place(); tiers(); if (egoN) gather(egoN); place(); mirror()
+    $('asof').textContent = asOf === B.today ? '' : 'as of ' + fmt(D(asOf))
+  }
+  function setTime(v) {
+    const was = shownTo
+    shownTo = Math.round(+v); const d = new Date(t0); d.setDate(t0.getDate() + shownTo)
+    whenEl.textContent = shownTo >= span ? 'Today' : fmt(d)
+    if (shownTo !== was) relayout(false)
+  }
+  tEl.addEventListener('input', () => { setTime(tEl.value); seen() })
+  let playing = null
+  $('play').addEventListener('click', () => {
+    if (playing) { cancelAnimationFrame(playing); playing = null; return }
+    let v = 0, last = performance.now()
+    const step = (now) => { v = Math.min(span, v + ((now - last) / 7000) * span); last = now; tEl.value = v; setTime(v); playing = v < span ? requestAnimationFrame(step) : null }
+    playing = requestAnimationFrame(step)
+  })
+
+  // ---------- the panel: tabs with a plate that slides, views that slide, a node pushed over them
+  let tab = ['review', 'week'].includes(qs.get('tab')) ? qs.get('tab') : 'today'
+  const tabsEl = $('tabs'), plate = $('plate')
+  function setTab(t, quiet) {
+    tab = t
+    tabsEl.querySelectorAll('.tab').forEach((b) => b.setAttribute('aria-selected', b.dataset.tab === t))
+    const b = tabsEl.querySelector(`[data-tab="${t}"]`)
+    plate.style.width = b.offsetWidth + 'px'; plate.style.transform = `translateX(${b.offsetLeft}px)`
+    if (!quiet && egoN) fly(null)
+    views()
+  }
+  tabsEl.addEventListener('click', (e) => { const b = e.target.closest('.tab'); if (b) setTab(b.dataset.tab) })
+  // a view left of the one shown waits on the left, one right of it on the right; a name pushes
+  // the tab it came from out to the left
+  const ORDER = ['today', 'week', 'review']
+  function views() {
+    const askOn = !!(typeof convo !== 'undefined' && convo.open), nodeOn = !!egoN && !askOn, at = ORDER.indexOf(tab)
+    ORDER.forEach((t, i) => { $('v-' + t).className = 'view' + (i === at ? (nodeOn || askOn ? ' off' : '') : i < at ? ' off' : ' offr') })
+    $('v-node').className = 'view' + (nodeOn ? '' : askOn && egoN ? ' off' : ' offr')
+    $('v-ask').className = 'view' + (askOn ? '' : ' offr')
+  }
+
+  // ---------- Today: the day as a line, the week, the counts that light the map, and Next
+  const C = B.counts
+  const owner = {}
+  N.forEach((n) => (n.mine || []).forEach((r) => { if (!owner[r.id] || (n.kind === 'person' && owner[r.id].n.kind !== 'person')) owner[r.id] = { r, n } }))
+  const contactAge = (n) => n.contact ? daysAgo(n.contact) : 99
+  // next: what you owe that is late or due, the people you spoke to most lately first (the
+  // conversation is still warm), then the oldest date
+  const NEXT = Object.values(owner).filter((x) => x.r.state !== 'open').sort((a, b) => contactAge(a.n) - contactAge(b.n) || (a.r.due || '9').localeCompare(b.r.due || '9')).slice(0, 5)
+  const COUNTS = [
+    ['overdue', C.overdue, 'overdue', 'pink', N.filter((n) => n.overdue).map((n) => n.id), 'yours, overdue'],
+    ['due', C.due, 'due soon', '', N.filter((n) => (n.mine || []).some((r) => r.state === 'due')).map((n) => n.id), 'due this week'],
+    ['theirs', C.theirs, 'owed, late', '', N.filter((n) => (n.theirs || []).some((r) => r.state === 'overdue')).map((n) => n.id), 'owed to you, late'],
+    ['changed', C.changed, 'changed', '', B.changed.filter((id) => byId[id]), 'changed since yesterday'],
+    ['cold', 0, 'going cold', '', N.filter((n) => n.kind === 'person' && (n.mine || []).length && (!n.contact || daysAgo(n.contact) > 14)).map((n) => n.id), 'going cold']
+  ]
+  COUNTS[4][1] = COUNTS[4][4].length
+  const DY = B.day, H0 = 7, H1 = 23, LW = 352, X = (h) => ((h - H0) / (H1 - H0)) * LW
+  const monday = new Date(today); monday.setDate(today.getDate() - ((today.getDay() + 6) % 7))
+  const week = [...Array(7)].map((_, i) => { const d = new Date(monday); d.setDate(monday.getDate() + i); return d })
+  const wkMeets = week.map((d) => { const s = new Set(); return B.meetings.filter((m) => m.date === iso(d) && !s.has(m.start) && s.add(m.start)) })
+  const chip = (n) => `<button class="node-chip" data-fly="${n.id}"><span class="sh" style="${SHAPE[n.kind]}"></span>${esc(n.label)}</button>`
+  const ckSvg = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+  // the calendar line: the next meeting from Google Calendar, or that the next day and a half is clear
+  function nextOnCal() {
+    const ag = DY.agenda
+    if (!ag) return 'calendar not connected'
+    const nx = ag.map((e) => ({ ...e, t: new Date(e.start) })).filter((e) => e.t > new Date()).sort((a, b) => a.t - b.t)[0]
+    if (!nx) return 'nothing on the calendar for 3 days'
+    const when = nx.t.toDateString() === new Date().toDateString() ? '' : nx.t.toLocaleDateString('en-GB', { weekday: 'short' }) + ' '
+    return `next: <b>${esc(nx.title)}</b> ${when}${nx.t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
+  }
+  function renderToday() {
+    const dictTotal = DY.dictations.reduce((a, b) => a + b, 0), askTotal = DY.asks.reduce((a, b) => a + b, 0)
+    const peak = Math.max(1, ...DY.dictations)
+    const nowH = new Date().getHours() + new Date().getMinutes() / 60
+    const hm = (t) => { const [h, m] = t.split(':').map(Number); return h + m / 60 }
+    const mineAll = Object.keys(owner).length
+    $('v-today').innerHTML = `<div class="wd">${WD[today.getDay()]}</div><div class="date">${today.getDate()} ${MONTH[today.getMonth()]}</div>
+      <div class="line" aria-hidden="true">${[9, 12, 15, 18, 21].map((h) => `<span class="hr" style="left:${X(h)}px">${String(h).padStart(2, '0')}</span>`).join('')}<div class="axis"></div>
+        ${DY.dictations.map((c, h) => c && h >= H0 && h < H1 ? `<i class="bar" style="left:${X(h + 0.5)}px;height:${3 + (c / peak) * 20}px" title="${c} dictation${c > 1 ? 's' : ''} at ${h}:00"></i>` : '').join('')}
+        ${DY.asks.map((c, h) => c && h >= H0 && h < H1 ? `<i class="askd" style="left:${X(h + 0.5)}px" title="${c} question${c > 1 ? 's' : ''} to Brain at ${h}:00"></i>` : '').join('')}
+        ${DY.calls.map((c, i) => `<i class="call" style="left:${X(hm(c.start))}px;width:${Math.max(6, (c.mins / 60 / (H1 - H0)) * LW)}px" title="${esc(c.start + ' ' + c.title)}"></i>`).join('')}
+        ${nowH >= H0 && nowH <= H1 && asOf === B.today ? `<i class="nowl" style="left:${X(nowH)}px"></i>` : ''}</div>
+      <div class="sum"><b>${dictTotal}</b> dictations · <b>${askTotal}</b> question${askTotal === 1 ? '' : 's'} to Brain · ${DY.calls.length ? `<b>${DY.calls.length}</b> call${DY.calls.length > 1 ? 's' : ''}` : 'no calls'} · ${nextOnCal()}</div>
+      <div class="week" id="week">${week.map((d, i) => `<button class="wk${iso(d) === B.today ? ' today' : ''}" data-i="${i}" aria-pressed="false" title="${esc(wkMeets[i].map((m) => (m.start ? m.start + ' ' : '') + m.title).join('\n') || 'no calls')}"><div class="l">${WD[d.getDay()].slice(0, 2)} ${d.getDate()}</div>
+        <div class="bars${wkMeets[i].length ? '' : ' none'}">${wkMeets[i].slice(0, 5).map(() => '<i></i>').join('')}</div></button>`).join('')}</div>
+      <div class="counts" id="counts">${COUNTS.map(([k, n, t, cls, , long]) => `<button class="count ${cls}" data-k="${k}" aria-pressed="false" title="${long}: light them on the map"><div class="n">${n}</div><div class="t">${t}</div></button>`).join('')}</div>
+      ${SW.length ? (() => { const left = SW.filter((x) => !x.gone), seen = left.filter((x) => x.seen).length, late = left.length - seen
+        const head = [late ? `${late} overdue` : '', seen ? `${seen} look${seen === 1 ? 's' : ''} done` : ''].filter(Boolean).join(' · ')
+        return left.length ? `<button class="sweepgo" id="sweepgo"><span><b>Sweep: ${head}</b><span>${seen ? 'these look done, you confirm · ' : ''}one at a time · about ${Math.max(1, Math.round(left.length * 5 / 60))} min</span></span><kbd>S</kbd></button>` : '' })() : ''}
+      <div class="sec"><h3>Next</h3><span class="sub">late or due · whoever you spoke to last first</span></div>
+      <div class="box">${NEXT.map(({ r, n }) => `<div class="it" data-id="${r.id}"><button class="ck" data-done="${r.id}" aria-label="Done: ${esc(r.what)}">${ckSvg}</button>
+        <div class="w"><a class="what" href="${obs(r.source)}" title="Open where this came from">${esc(r.what)}</a>
+        <div class="meta">${chip(n)}<span class="${r.state === 'overdue' ? 'late' : ''}">${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span>${n.contact ? `<span>· spoke ${daysAgo(n.contact) === 0 ? 'today' : daysAgo(n.contact) === 1 ? 'yesterday' : daysAgo(n.contact) + ' days ago'}</span>` : ''}</div></div></div>`).join('')}</div>`
+  }
+  $('v-today').addEventListener('click', (e) => {
+    const w = e.target.closest('.wk'), c = e.target.closest('.count')
+    const wkEl = $('week'), cntEl = $('counts')
+    const unpress = () => { wkEl.querySelectorAll('[aria-pressed]').forEach((x) => x.setAttribute('aria-pressed', 'false')); cntEl.querySelectorAll('[aria-pressed]').forEach((x) => x.setAttribute('aria-pressed', 'false')) }
+    if (w) {
+      const i = +w.dataset.i, was = w.getAttribute('aria-pressed') === 'true'
+      unpress(); if (was) return lightOff()
+      w.setAttribute('aria-pressed', 'true')
+      light(new Set(wkMeets[i].flatMap((m) => m.nodes)), `${WD[week[i].getDay()]}, ${wkMeets[i].length} call${wkMeets[i].length === 1 ? '' : 's'}`)
+    }
+    if (c) {
+      const was = c.getAttribute('aria-pressed') === 'true'
+      unpress(); if (was) return lightOff()
+      c.setAttribute('aria-pressed', 'true')
+      const k = COUNTS.find((x) => x[0] === c.dataset.k)
+      light(new Set(k[4]), k[5])
+    }
+  })
+  function light(set, label) { if (egoN) fly(null); lit = set; litLabel = label || ''; seen() }
+  function lightOff() { lit = null; litLabel = ''; document.querySelectorAll('#week [aria-pressed], #counts [aria-pressed]').forEach((x) => x.setAttribute('aria-pressed', 'false')) }
+
+  // ---------- ledger changes go to Brain on the Mac as one link per kind of change, batched, so a
+  // run of clicks is one write and one commit (brain://ledger)
+  const outbox = { done: [], keep: [], drop: [] }
+  // the owner: "Me" in the ledger, or the name in wiki/about-me.md
+  const ME = new Set(['me', 'i', 'self', 'myself', 'you', '', ...(B.me ? [B.me.toLowerCase(), B.me.split(' ')[0].toLowerCase()] : [])])
+  const isMe = (s) => ME.has((s || '').trim().replace(/\?$/, '').toLowerCase())
+  let flushT = 0
+  function send(v, ids) {
+    (outbox[v] ||= []).push(...ids); clearTimeout(flushT)
+    flushT = setTimeout(function flush() {
+      const v = Object.keys(outbox).find((k) => outbox[k].length); if (!v) return
+      const [kind, date] = v.split('|')
+      location.href = `brain://ledger?v=${kind}&ids=${outbox[v].join(',')}${date ? `&date=${date}` : ''}`; outbox[v] = []
+      flushT = setTimeout(flush, 400)
+    }, 700)
+  }
+  const reviewed = new Set(store.get('brain-home-reviewed', []))
+  const readPages = new Set(store.get('brain-home-read-' + B.today, []))
+  function remember() { store.set('brain-home-reviewed', [...reviewed]); store.set('brain-home-read-' + B.today, [...readPages]) }
+  function gone(el, then) {
+    el.style.maxHeight = el.offsetHeight + 'px'
+    requestAnimationFrame(() => { el.classList.add('gone'); setTimeout(() => { then && then() }, reduce ? 0 : 440) })
+  }
+
+  // ---------- Review: what Brain filed since yesterday, grouped by where it heard it
+  const RV = B.review
+  const who = (r) => isMe(r.owes) ? (isMe(r.to) || r.to === '-' ? 'Yours' : `You owe ${esc(r.to)}`) : isMe(r.to) ? `${esc(r.owes)} owes you` : `${esc(r.owes)} owes ${esc(r.to)}`
+  const left = () => RV.groups.reduce((s, g) => s + g.rows.filter((r) => !reviewed.has(r.id)).length, 0)
+  const pagesLeft = () => RV.wrote.filter((p) => !readPages.has(p.id)).length
+  const svgKeep = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>'
+  const svgDrop = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>'
+  function renderReview() {
+    const groups = RV.groups.map((g) => ({ ...g, rows: g.rows.filter((r) => !reviewed.has(r.id)) })).filter((g) => g.rows.length)
+    const pages = RV.wrote.filter((p) => !readPages.has(p.id))
+    const nP = groups.reduce((s, g) => s + g.rows.length, 0)
+    if (!nP && !pages.length) { $('v-review').innerHTML = `<div class="empty"><b>All checked</b>Everything Brain filed since yesterday has your yes.</div>`; return }
+    $('v-review').innerHTML = `<p class="lede">Since yesterday Brain heard <b>${nP} promise${nP === 1 ? '' : 's'}</b> in ${groups.length} place${groups.length === 1 ? '' : 's'} and wrote on <b>${pages.length} page${pages.length === 1 ? '' : 's'}</b>. Keep what is right, drop what was never a promise.</p>
+      ${groups.map((g) => `<div class="grp box" data-g="${esc(g.key)}"><div class="ghead"><div class="src">${g.file || g.url ? `<a class="ttl" href="${g.url || obs(g.file)}" title="Open where Brain heard it">${esc(g.title)}</a>` : `<span class="ttl">${esc(g.title)}</span>`}
+        <span class="gk">${g.file.startsWith('archive/meeting') ? 'Call' : g.url ? 'Link' : 'Notes'} · ${fmt(D(g.rows[0].opened))} · ${g.rows.length}</span></div><button class="btn" data-keepall="${esc(g.key)}">Keep all</button></div>
+        ${g.rows.map((r) => `<div class="it" data-id="${r.id}"><span class="dot ${r.state}"></span><div class="w"><div class="what">${esc(r.what)}</div>
+          <div class="meta"><span>${who(r)}</span><span class="${r.state === 'overdue' ? 'late' : ''}">· ${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span></div></div>
+          <div class="acts"><button class="ib keep" data-keep="${r.id}" title="Keep, it is right" aria-label="Keep: ${esc(r.what)}">${svgKeep}</button><button class="ib" data-drop="${r.id}" title="Not a promise" aria-label="Drop, not a promise: ${esc(r.what)}">${svgDrop}</button></div></div>`).join('')}</div>`).join('')}
+      ${pages.length ? `<div class="sec"><h3>Pages it wrote</h3><span class="sub">the new lines, newest pages first</span></div>
+      <div class="box" id="pages">${pages.map((p) => `<div class="it" data-page="${p.id}"><div class="w">${byId[p.id] ? chip(byId[p.id]) : `<b>${esc(p.title)}</b>`}
+        ${p.lines.map((l) => `<div class="quote">${esc(l)}</div>`).join('')}${p.more ? `<div class="meta">and ${p.more} more line${p.more === 1 ? '' : 's'}</div>` : ''}</div>
+        <div class="acts"><a class="ib" href="${obs('wiki/' + p.id + '.md')}" title="Open the page to fix it" aria-label="Open ${esc(p.title)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5"/></svg></a><button class="ib keep" data-read="${p.id}" title="Looks right" aria-label="Looks right: ${esc(p.title)}">${svgKeep}</button></div></div>`).join('')}</div>` : ''}`
+  }
+  // ---------- Week: the last 7 days and the next 7, from the ledger and its history
+  const WK = B.week || { closed: [], slipped: [], ahead: [], fresh: 0, freshMine: 0, meetings: 0, from: iso(today) }
+  let wkAll = false
+  const wkRow = (r, how) => `<div class="it"><span class="dot ${how}"></span><div class="w"><div class="what${how === 'done' ? ' closed' : ''}">${esc(r.what)}</div>
+      <div class="meta"><span>${who(r)}</span>${how === 'done' ? `<span>· ${r.status === 'dropped' ? 'dropped' : 'done'}</span>` : r.due ? `<span class="${how === 'overdue' ? 'late' : ''}">· ${how === 'overdue' ? 'was due ' : 'by '}${fmt(D(r.due))}</span>` : ''}</div></div></div>`
+  function renderWeek() {
+    const cold = COUNTS[4][4].map((id) => byId[id]).filter(Boolean)
+    const mineClosed = WK.closed.filter((r) => isMe(r.owes)).length
+    const shown = wkAll ? WK.closed : WK.closed.slice(0, 6)
+    $('v-week').innerHTML = `<div class="wk"><p class="lede">Since ${fmt(D(WK.from))}: <b>${WK.closed.length} closed</b> (${mineClosed} yours), <b>${WK.slipped.length} slipped</b>, ${WK.fresh} new promise${WK.fresh === 1 ? '' : 's'} (${WK.freshMine} yours) from ${WK.meetings} call${WK.meetings === 1 ? '' : 's'} and your notes.</p>
+      <div class="sec"><h3>Next 7 days</h3><span class="sub">${WK.ahead.length ? 'yours first' : ''}</span></div>
+      ${WK.ahead.length ? `<div class="box">${WK.ahead.map((r) => wkRow(r, 'due')).join('')}</div>` : '<div class="empty">Nothing with a date this week.</div>'}
+      ${WK.slipped.length ? `<div class="sec"><h3>Slipped</h3><span class="sub">due this week, not seen done</span></div><div class="box">${WK.slipped.map((r) => wkRow(r, 'overdue')).join('')}</div>` : ''}
+      ${cold.length ? `<div class="sec"><h3>Going cold</h3><span class="sub">you owe them, no contact in 2 weeks</span></div><div class="chips">${cold.map(chip).join('')}</div>` : ''}
+      ${WK.closed.length ? `<div class="sec"><h3>Closed</h3><span class="sub">yours first</span></div><div class="box">${shown.map((r) => wkRow(r, 'done')).join('')}
+        ${WK.closed.length > 6 ? `<button class="more" id="wkmore">${wkAll ? 'Show fewer' : `Show all ${WK.closed.length}`}</button>` : ''}</div>` : ''}</div>`
+  }
+  $('v-week').addEventListener('click', (e) => { if (e.target.closest('#wkmore')) { wkAll = !wkAll; renderWeek() } })
+  function counts() {
+    const nP = left(), nW = pagesLeft()
+    $('rbadge').textContent = nP + nW || ''
+    const f = $('filed')
+    f.classList.toggle('none', !(nP + nW))
+    f.innerHTML = `<span class="dot"></span><span>Brain filed <b>${nP}</b> promise${nP === 1 ? '' : 's'} and <b>${nW}</b> page${nW === 1 ? '' : 's'}</span><span class="go">Review</span>`
+    if (tab) setTab(tab, true)
+  }
+  $('filed').addEventListener('click', () => { setTab('review') })
+  $('v-review').addEventListener('click', (e) => {
+    const k = e.target.closest('[data-keep]'), d = e.target.closest('[data-drop]'), all = e.target.closest('[data-keepall]'), rd = e.target.closest('[data-read]')
+    const done = (ids, v) => {
+      ids.forEach((id) => reviewed.add(id)); remember(); send(v, ids)
+      toast(v === 'keep' ? (ids.length > 1 ? `Kept ${ids.length}` : 'Kept') + ' in your ledger' : 'Dropped, it was not a promise')
+    }
+    const settle = (row) => {
+      const grp = row.closest('.grp')
+      gone(row, () => { row.remove(); if (grp && !grp.querySelector('.it')) gone(grp, () => { grp.remove(); after() }); else after() })
+    }
+    const after = () => { counts(); if (!left() && !pagesLeft()) renderReview(); else { const l = $('v-review').querySelector('.lede'); if (l) { const g = $('v-review').querySelectorAll('.grp').length, nP = left(), nW = pagesLeft(); l.innerHTML = `Since yesterday Brain heard <b>${nP} promise${nP === 1 ? '' : 's'}</b> in ${g} place${g === 1 ? '' : 's'} and wrote on <b>${nW} page${nW === 1 ? '' : 's'}</b>. Keep what is right, drop what was never a promise.` } } }
+    if (k) { done([k.dataset.keep], 'keep'); settle(k.closest('.it')) }
+    if (d) { done([d.dataset.drop], 'drop'); settle(d.closest('.it')) }
+    if (all) {
+      const grp = all.closest('.grp'); const ids = [...grp.querySelectorAll('.it[data-id]')].map((x) => x.dataset.id)
+      done(ids, 'keep'); gone(grp, () => { grp.remove(); after() })
+    }
+    if (rd) { readPages.add(rd.dataset.read); remember(); settle(rd.closest('.it')) }
+  })
+
+  // ---------- a node, pushed over the tab: what it is now, its weeks as a line, what is owed,
+  // its calls, who and what it is close to
+  function showNode(n) {
+    views()
+    $('chip').hidden = !n; $('chipt').textContent = n ? n.label : ''
+    q.placeholder = n ? `Ask about ${n.label.split(' ')[0]}` : 'Ask Brain or find anything'
+    if (!n) return
+    const first = n.label.split(' ')[0]
+    const cold = n.kind === 'person' && n.contact && daysAgo(n.contact) > 14 && (n.mine || []).length
+    // eight weeks back, two ahead: calls as bars, what you owe as dots on its date, today in pink
+    const a = new Date(today); a.setDate(a.getDate() - 56)
+    const TL = 352, span2 = 70, P = (s) => (Math.max(0, Math.min(span2, between(iso(a), s))) / span2) * TL
+    const mondays = [...Array(11)].map((_, i) => { const d = new Date(a); d.setDate(a.getDate() + ((8 - a.getDay()) % 7) + i * 7); return d }).filter((d) => between(iso(a), iso(d)) <= span2)
+    const contactBar = n.contact && !(n.metDates || []).includes(n.contact) && n.contact >= iso(a) ? `<i class="cl soft" style="left:${P(n.contact)}px" title="last contact ${fmt(D(n.contact))}"></i>` : ''
+    const tl = `<div class="sec"><h3>Ten weeks</h3><span class="sub"><i class="lgc"></i>calls <i class="lgd"></i>what you owe</span></div><div class="tl" aria-hidden="true"><div class="ax"></div>${contactBar}
+      ${mondays.map((d, i) => `<i class="wkt" style="left:${P(iso(d))}px"></i>${i % 2 === 0 ? `<span class="wl" style="left:${P(iso(d))}px">${fmt(d)}</span>` : ''}`).join('')}
+      ${(n.metDates || []).filter((d) => d >= iso(a)).map((d) => `<i class="cl" style="left:${P(d)}px" title="call ${fmt(D(d))}"></i>`).join('')}
+      ${(n.mine || []).filter((r) => r.due).map((r) => `<i class="du ${r.state}" style="left:${P(r.due)}px" title="${esc(r.what)}"></i>`).join('')}
+      <i class="td" style="left:${P(B.today)}px"></i></div>`
+    const items = (list) => `<div class="box">${list.map((r) => `<div class="it" data-id="${r.id}"><button class="ck" data-done="${r.id}" aria-label="Done: ${esc(r.what)}">${ckSvg}</button>
+      <div class="w"><a class="what" href="${obs(r.source)}">${esc(r.what)}</a><div class="meta"><span class="${r.state === 'overdue' ? 'late' : ''}">${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span></div></div></div>`).join('')}</div>`
+    const nb = neighbors(n).slice(0, 14)
+    $('v-node').innerHTML = `<div class="ntop"><button class="back" id="back"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>${trail.length > 1 ? esc(trail[trail.length - 2].label) : ({ review: 'Review', week: 'Week' })[tab] || 'Today'}</button>
+        <a class="openp" href="${obs('wiki/' + n.id + '.md')}">Open page ↗</a></div>
+      <div class="kind">${KIND[n.kind]} · ${TIERNAME[n.tierNow ?? 2].toLowerCase()}</div>
+      <div class="nname">${esc(n.title)}</div>
+      <div class="nmeta">${n.last ? 'Last contact ' + esc(n.last) : n.contact ? 'Last met ' + fmt(D(n.contact)) : 'Written about ' + (daysAgo(n.lastTouched) === 0 ? 'today' : fmt(D(n.lastTouched)))}${cold ? ' · <span class="late">going cold</span>' : ''}</div>
+      ${n.now ? `<p class="nowp">${esc(n.now)}</p>` : ''}
+      ${tl}
+      ${(n.mine || []).length ? `<div class="sec"><h3>You owe${n.kind === 'person' ? ' ' + esc(first) : ''}</h3><span class="sub">${n.mine.length}${n.overdue ? ` · <span style="color:var(--pink)">${n.overdue} overdue</span>` : ''}</span></div>${items(n.mine)}` : ''}
+      ${(n.theirs || []).length ? `<div class="sec"><h3>${n.kind === 'person' ? esc(first) + ' owes you' : 'Owed to you'}</h3><span class="sub">${n.theirs.length}</span></div>${items(n.theirs)}` : ''}
+      ${(n.meetings || []).length ? `<div class="sec"><h3>Calls</h3><span class="sub">${n.meetings.length}</span></div><div class="box">${n.meetings.map((m) => `<div class="it"><span class="dot"></span><div class="w"><a class="what" href="${obs(m.file)}">${esc(m.title)}</a></div><span class="meta" style="margin:0">${fmt(D(m.date))}${m.start ? ' ' + m.start : ''}</span></div>`).join('')}</div>` : ''}
+      ${nb.length ? `<div class="sec"><h3>Close to ${n.kind === 'person' ? esc(first) : 'it'}</h3><span class="sub">links and shared calls</span></div><div class="conn">${nb.map((x) => `<button class="node-chip" data-fly="${x.m.id}"><span class="sh" style="${SHAPE[x.m.kind]}"></span>${esc(x.m.label)}</button>`).join('')}</div>` : ''}`
+    $('v-node').scrollTop = 0
+  }
+  document.addEventListener('click', (e) => {
+    const c = e.target.closest('[data-fly]'); if (c) { fly(byId[c.dataset.fly], !!egoN); return }
+    if (e.target.closest('#back')) { if (trail.length > 1) { trail.pop(); const n = trail[trail.length - 1]; gather(n); place(); aim(); showNode(n); crumbs() } else fly(null) }
+    const ok = e.target.closest('[data-done]')
+    if (ok && !ok.classList.contains('on')) {
+      ok.classList.add('on'); send('done', [ok.dataset.done]); toast('Done, in your ledger')
+      const it = ok.closest('.it'); setTimeout(() => gone(it, () => it.remove()), reduce ? 0 : 500)
+    }
+  })
+
+  // ---------- ask or find: one field at the bottom of the panel, about the name you are in
+  const q = $('q'), resEl = $('results'), sendB = $('send')
+  let results = [], pick = 0
+  function showResults() {
+    resEl.innerHTML = results.map((n, i) => `<div class="res" role="option" data-id="${n.id}" aria-selected="${i === pick}"><span class="sh" style="${SHAPE[n.kind] || ''}"></span><span class="nm">${esc(n.label)}${n.snip ? `<span class="sn">${n.snip}</span>` : ''}</span><span class="kd">${KIND[n.kind]}</span></div>`).join('')
+    resEl.classList.toggle('open', results.length > 0)
+  }
+  q.addEventListener('input', () => {
+    const v = q.value.trim().toLowerCase()
+    sendB.disabled = !v; $('kbd').style.display = v ? 'none' : ''
+    const inName = (n) => n.label.toLowerCase().includes(v) || n.id.includes(v)
+    results = v && !egoN ? N.filter((n) => n !== you && (inName(n) || (v.length > 2 && (n.text || '').toLowerCase().includes(v))))
+      .sort((a, b) => (inName(b) - inName(a)) || (b.label.toLowerCase().startsWith(v) - a.label.toLowerCase().startsWith(v)) || b.act - a.act).slice(0, 6) : []
+    results.forEach((n) => {
+      const t = n.text || '', i = t.toLowerCase().indexOf(v)
+      n.snip = !inName(n) && i >= 0 ? (i > 30 ? '…' : '') + esc(t.slice(Math.max(0, i - 30), i)) + '<mark>' + esc(t.slice(i, i + v.length)) + '</mark>' + esc(t.slice(i + v.length, i + v.length + 50)) + '…' : ''
+    })
+    pick = 0
+    if (!egoN) { lit = results.length ? new Set(results.map((n) => n.id)) : null; litLabel = results.length ? `“${q.value.trim()}”` : '' }
+    showResults()
+  })
+  function ask() {
+    const text = q.value.trim(); if (!text) return
+    if (CAN_ASK) { homeAsk(egoN && !convo.open ? `About ${egoN.title}: ${text}` : text); q.value = ''; q.dispatchEvent(new Event('input')); return }
+    location.href = 'brain://ask?q=' + encodeURIComponent(egoN ? `About ${egoN.title}: ${text}` : text)
+    toast(egoN ? `Asked Brain about ${egoN.label.split(' ')[0]}, the answer opens in the notch` : 'Asked Brain, the answer opens in the notch')
+    q.value = ''; q.dispatchEvent(new Event('input'))
+  }
+  q.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { if (!results.length) return; e.preventDefault(); pick = (pick + (e.key === 'ArrowDown' ? 1 : results.length - 1)) % results.length; showResults(); return }
+    if (e.key !== 'Enter') return
+    if (results[pick]) { const n = results[pick]; q.value = ''; q.dispatchEvent(new Event('input')); q.blur(); fly(n); return }
+    ask()
+  })
+  sendB.addEventListener('click', ask)
+  resEl.addEventListener('click', (e) => { const r = e.target.closest('.res'); if (r) { q.value = ''; q.dispatchEvent(new Event('input')); fly(byId[r.dataset.id]) } })
+  $('chip').querySelector('button').addEventListener('click', () => fly(null))
+
+  // ---------- ⌘K: one box for everything. Names and projects jump on the map, the tabs and the
+  // sweep open, "ask …" asks Brain, "done …" closes a row. Rows come from every name's mine and theirs, once each.
+  const kbar = $('kbar'), kq = $('kq'), klist = $('klist')
+  const KROWS = (() => { const m = new Map(); N.forEach((n) => [...(n.mine || []), ...(n.theirs || [])].forEach((r) => { if (!m.has(r.id)) m.set(r.id, { ...r, node: n }) })); return [...m.values()] })()
+  const CMDS = [
+    { t: 'Sweep', k: 'S', i: '↻', go: () => SW.some((x) => !x.gone) ? sweep(true) : toast('Nothing to sweep') },
+    { t: 'Today', i: '◷', go: () => setTab('today') }, { t: 'Week', i: '▦', go: () => setTab('week') }, { t: 'Review', i: '✓', go: () => setTab('review') },
+    { t: 'See the whole map', i: '◎', go: () => { if (egoN) fly(null); $('fit').click() } },
+  ]
+  let kitems = [], kpick = 0
+  const kwho = (r) => isMe(r.owes) ? `you owe ${(r.to || '').split(/[ ,]/)[0]}` : `${(r.owes || '').split(/[ ,]/)[0]} owes ${isMe(r.to) ? 'you' : (r.to || '').split(/[ ,]/)[0]}`
+  function kfill() {
+    const raw = kq.value.trim(), m = raw.match(/^(done|ask)\b\s*(.*)$/i), mode = m ? m[1].toLowerCase() : '', v = (m ? m[2] : raw).toLowerCase()
+    const hit = (s) => !v || s.toLowerCase().includes(v)
+    const rowItem = (r, how) => ({ g: how === 'done' ? 'Mark done' : 'Promises', h: `<span class="ki">${how === 'done' ? '✓' : '·'}</span><span class="kt">${esc(r.what)}<small>${esc(kwho(r))}</small></span><span class="kk ${r.state === 'overdue' ? 'late' : ''}">${r.due ? fmt(D(r.due)) : ''}</span>`,
+      go: () => how === 'done' ? (send('done', [r.id]), settle(r.id, 'done'), toast('Done, in your ledger'), renderToday()) : fly(r.node) })
+    const rows = (how) => KROWS.filter((r) => hit(r.what + ' ' + r.owes + ' ' + r.to)).sort((a, b) => ({ overdue: 0, due: 1, open: 2 })[a.state] - ({ overdue: 0, due: 1, open: 2 })[b.state]).slice(0, 12).map((r) => rowItem(r, how))
+    if (mode === 'ask') kitems = [{ g: 'Ask Brain', h: `<span class="ki">?</span><span class="kt">${v ? esc(m[2]) : 'Type the question'}</span><span class="kk">↵</span>`, go: () => { if (!m[2]) return 'stay'; q.value = m[2]; ask() } }]
+    else if (mode) kitems = rows(mode)
+    else {
+      const names = N.filter((n) => n !== you && hit(n.label + ' ' + n.title)).sort((a, b) => (b.overdue || 0) - (a.overdue || 0) || b.act - a.act).slice(0, raw ? 8 : 5)
+        .map((n) => ({ g: 'People and projects', h: `<span class="sh" style="${SHAPE[n.kind] || ''}"></span><span class="kt">${esc(n.title)}</span><span class="kk ${n.overdue ? 'late' : ''}">${n.overdue ? n.overdue + ' overdue' : KIND[n.kind]}</span>`, go: () => fly(n) }))
+      const cmds = CMDS.filter((c) => hit(c.t)).map((c) => ({ g: 'Go', h: `<span class="ki">${c.i}</span><span class="kt">${esc(c.t)}</span><span class="kk">${c.k || ''}</span>`, go: c.go }))
+      kitems = [...cmds, ...names, ...(raw ? rows('') .slice(0, 5) : []), ...(raw.length > 3 ? [{ g: 'Ask Brain', h: `<span class="ki">?</span><span class="kt">${esc(raw)}</span><span class="kk">ask</span>`, go: () => { q.value = raw; ask() } }] : [])]
+    }
+    kpick = Math.min(kpick, Math.max(0, kitems.length - 1))
+    let g = ''
+    klist.innerHTML = kitems.map((it, i) => (it.g !== g ? `<div class="kgrp">${(g = it.g)}</div>` : '') + `<div class="kit" role="option" data-k="${i}" aria-selected="${i === kpick}">${it.h}</div>`).join('') || '<div class="kempty">Nothing by that name. Type ask and the question to ask Brain.</div>'
+    klist.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' })
+  }
+  function kopen(on) {
+    if (on) { kbar.hidden = false; kq.value = ''; kpick = 0; kfill(); kq.focus() } else { kbar.hidden = true; kq.blur() }
+  }
+  function krun(i) { const it = kitems[i]; if (!it) return; if (it.go() !== 'stay') kopen(false) }
+  kq.addEventListener('input', () => { kpick = 0; kfill() })
+  kq.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); if (kitems.length) { kpick = (kpick + (e.key === 'ArrowDown' ? 1 : kitems.length - 1)) % kitems.length; kfill() } }
+    else if (e.key === 'Enter') { e.preventDefault(); krun(kpick) }
+    else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); kopen(false) }
+  })
+  klist.addEventListener('click', (e) => { const it = e.target.closest('.kit'); if (it) krun(+it.dataset.k) })
+  document.addEventListener('mousedown', (e) => { if (!kbar.hidden && !kbar.contains(e.target)) kopen(false) })
+  addEventListener('keydown', (e) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); e.stopImmediatePropagation(); kopen(kbar.hidden) } }, true)
+  if (qs.has('kbar')) setTimeout(() => { kopen(true); if (qs.get('kbar')) { kq.value = qs.get('kbar'); kfill() } }, 60)
+
+  // ---------- keys: arrows walk the rows (in a name, its neighbors), return flies, escape walks back
+  function step(dir) {
+    const vis = N.filter((n) => n !== you && n.show > 0.5 && (!egoN || egoPos.has(n)))
+    if (!vis.length) return
+    const from = kb && vis.includes(kb) ? kb : null
+    if (!from) { kb = vis.sort((a, b) => a.ty - b.ty)[0]; hover = kb; return }
+    const Y = (n) => n.ty
+    const cand = vis.filter((n) => n !== from && (dir === 'up' ? Y(n) < Y(from) - 1 : dir === 'down' ? Y(n) > Y(from) + 1 : dir === 'left' ? n.tx < from.tx - 1 : n.tx > from.tx + 1))
+    const cost = (n) => dir === 'up' || dir === 'down' ? Math.abs(Y(n) - Y(from)) + Math.abs(n.tx - from.tx) * 0.2 + (Math.sign(n.tx) !== Math.sign(from.tx) ? 1e4 : 0) : Math.abs(Y(n) - Y(from)) * 3 + Math.abs(n.tx - from.tx) * 0.1
+    const next = cand.sort((a, b) => cost(a) - cost(b))[0]
+    if (next) { kb = next; hover = next; tipFor(null) }
+  }
+  cv.addEventListener('keydown', (e) => {
+    const k = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[e.key]
+    if (k) { e.preventDefault(); step(k); seen() }
+    if (e.key === 'Enter' && kb) { fly(kb, !!egoN); seen() }
+  })
+  addEventListener('keydown', (e) => {
+    if (!kbar.hidden) return
+    if (e.key === '/' && document.activeElement !== q) { e.preventDefault(); q.focus(); seen() }
+    if (e.key === 'Escape') {
+      if (results.length) { q.value = ''; q.dispatchEvent(new Event('input')); return }
+      if (quickN) return quick(null)
+      if (convo.open) return closeAsk()
+      if (trail.length > 1) { trail.pop(); const n = trail[trail.length - 1]; gather(n); place(); aim(); showNode(n); crumbs(); return }
+      if (egoN) return fly(null)
+      lightOff(); q.blur()
+    }
+  })
+  const sr = $('sr')
+  function mirror() {
+    sr.innerHTML = N.filter((n) => n !== you && n.want).sort((a, b) => (a.tierNow ?? 2) - (b.tierNow ?? 2) || byLabel(a, b)).map((n) => `<li><button data-fly="${n.id}">${esc(n.title)}, ${KIND[n.kind].toLowerCase()}, ${TIERNAME[n.tierNow ?? 2].toLowerCase()}${(n.mine || []).length ? `, you owe ${n.mine.length}` : ''}${(n.theirs || []).length ? `, owed to you ${n.theirs.length}` : ''}${n.overdue ? `, ${n.overdue} overdue` : ''}</button></li>`).join('')
+  }
+  const toastEl = $('toast')
+  let toastT = 0
+  function toast(t) { toastEl.textContent = t; toastEl.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => toastEl.classList.remove('on'), 2200) }
+  const hintEl = $('hint')
+  let hintSeen = store.get('brain-home-hint-7', false)
+  if (hintSeen) hintEl.style.opacity = 0
+  function seen() { if (hintSeen) return; hintSeen = true; hintEl.style.opacity = 0; store.set('brain-home-hint-7', true) }
+  const tip = $('tip')
+  function tipFor(n) {
+    if (true) { tip.style.opacity = 0; return }
+    const bits = [KIND[n.kind], TIERNAME[n.tierNow ?? 2].toLowerCase(), n.overdue ? `${n.overdue} overdue` : '', n.met ? `${n.met} call${n.met > 1 ? 's' : ''} in 2 weeks` : ''].filter(Boolean)
+    tip.innerHTML = `${esc(n.title)}<div class="s">${bits.join(' · ')}</div>`; tip.style.opacity = 1
+  }
+  function moveTip(e) { tip.style.left = e.clientX + 14 + 'px'; tip.style.top = e.clientY + 14 + 'px' }
+
+  let quickN = null, quickSide = 1
+  const qc = $('qc')
+  const roleOf = (n) => {
+    let t = (n.now || '').replace(/\s+/g, ' ').replace(/\([^)]*\)/g, '').replace(/\S+@\S+/g, '').replace(/\s+([,.])/g, '$1').trim()
+    const f = (t.match(/^.*?[.!?](\s|$)/) || [t])[0].trim()
+    return f.length > 160 ? f.slice(0, 158).replace(/[ ,;:][^ ,;:]*$/, '') + '…' : f
+  }
+  function quick(n) {
+    quickN = n
+    if (!n) { qc.classList.remove('on'); setTimeout(() => { if (!quickN) qc.hidden = true }, 200); return }
+    const list = [...(n.mine || []).map((r) => ({ r, you: true })), ...(n.theirs || []).map((r) => ({ r, you: false }))]
+      .sort((x, y) => ({ overdue: 0, due: 1, open: 2 })[x.r.state] - ({ overdue: 0, due: 1, open: 2 })[y.r.state] || (x.r.due || '9').localeCompare(y.r.due || '9'))
+    const person = n.kind === 'person'
+    const pic = n.photo ? `<span class="pic" style="background-image:url('${n.photo}')"></span>` : person ? `<span class="pic sil" style="--tint:${tintOf(n)}"></span>` : `<span class="pic thing" style="--tint:${tintOf(n)}">${esc(initials(n))}</span>`
+    const nm = (s) => esc((s || '').split(/[ ,]/)[0])
+    qc.innerHTML = `<div class="qh">${pic}<div class="qn"><b>${esc(n.title)}</b><span>${KIND[n.kind]} · ${TIERNAME[n.tierNow ?? 2].toLowerCase()}${n.contact ? ` · spoke ${fmt(D(n.contact))}` : ''}</span></div>${n.overdue ? `<span class="od">${n.overdue} overdue</span>` : ''}<button class="x" aria-label="Close">×</button></div>
+      ${n.now ? `<div class="rl">${esc(roleOf(n))}</div>` : ''}
+      ${list.length ? `<ul>${list.slice(0, 5).map(({ r, you }) => `<li data-row="${r.id}"><div class="w"><span>${you ? `You owe ${nm(r.to)}` : `${nm(r.owes)} owes you`}</span><span class="${r.state === 'overdue' ? 'late' : ''}">${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span></div>
+        <div class="tr"><a class="t" href="${obs(r.source)}" title="Open the note it came from">${esc(r.what)}</a><button class="qd" data-qdone="${r.id}" aria-label="Done: ${esc(r.what)}" title="Done"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div></li>`).join('')}</ul>${list.length > 5 ? `<div class="meta">+ ${list.length - 5} more when you explore</div>` : ''}` : '<div class="meta">Nothing owed either way</div>'}
+      ${(n.meetings || []).length ? `<div class="meta">Last call: ${esc(n.meetings[0].title)} · ${fmt(D(n.meetings[0].date))}</div>` : ''}
+      <div class="gos"><button class="ask2" data-ask="${esc('Where do things stand with ' + n.title + '?')}">Ask Brain about ${esc(n.label.split(' ')[0])}</button><button class="go">Explore around</button></div>`
+    // the side is picked once, when it opens, so the card never jumps across its dot while the map moves
+    quickSide = S(n.x, n.y)[0] < stage.cx ? 1 : -1
+    qc.hidden = false; placeQuick(); requestAnimationFrame(() => qc.classList.add('on'))
+    seen()
+  }
+  function placeQuick() {
+    if (!quickN || qc.hidden) return
+    const [sx, sy] = S(quickN.x, quickN.y), w = 330, h = qc.offsetHeight
+    const right = quickSide > 0 ? sx + 26 : sx - 26 - w
+    const x = Math.max(12, Math.min(stage.w - w - 12, right)), y = Math.max(12, Math.min(innerHeight - h - 12, sy - 40))
+    qc.style.left = x + 'px'; qc.style.top = y + 'px'; qc.style.setProperty('--ox', quickSide > 0 ? 'left' : 'right')
+  }
+  qc.addEventListener('click', (e) => {
+    const d = e.target.closest('[data-qdone]')
+    if (d && !d.classList.contains('on')) {
+      d.classList.add('on'); send('done', [d.dataset.qdone]); settle(d.dataset.qdone, 'done'); toast('Done, in your ledger')
+      const li = d.closest('li'); li.classList.add('gone'); setTimeout(() => { li.remove(); placeQuick() }, reduce ? 0 : 320); return
+    }
+    const a = e.target.closest('[data-ask]'); if (a) { if (CAN_ASK) { quick(null); convo.turns = []; homeAsk(a.dataset.ask) } else { location.href = 'brain://ask?q=' + encodeURIComponent(a.dataset.ask); toast('Asked Brain, the answer opens in the notch') } return }
+    if (e.target.closest('.x')) return quick(null)
+    if (e.target.closest('.go')) { const n = quickN; quick(null); fly(n) }
+  })
+  // ---------- the sweep: every overdue thing you owe, oldest first,
+  // one at a time: Done, Still on (moves it a week out) or Drop (it was never really on). The dial lights
+  // who it is about; Brain applies each choice to the ledger. Keys: D, S, X, arrows, Escape.
+  const SW = (B.sweep || []).map((r) => ({ ...r }))
+  let swAt = 0, swOn = false
+  const swEl = $('sw')
+  const inAWeek = () => { const d = new Date(today); d.setDate(d.getDate() + 7); return iso(d) }
+  // what a choice changes on the dial and in the panel right away, before the hourly refresh
+  function settle(rowId, how) {
+    N.forEach((n) => {
+      const r = (n.mine || []).find((x) => x.id === rowId); if (!r) return
+      if (r.state === 'overdue') n.overdue = Math.max(0, (n.overdue || 0) - 1)
+      if (how === 'due') { r.state = 'open'; r.due = inAWeek() } else n.mine = n.mine.filter((x) => x !== r)
+    })
+    const s = SW.find((x) => x.id === rowId); if (s) s.gone = how
+    if (B.counts.overdue && s) { B.counts.overdue--; COUNTS[0][1] = B.counts.overdue }
+  }
+  function sweep(open) {
+    swOn = open
+    if (!open) { swEl.classList.remove('on'); setTimeout(() => { if (!swOn) swEl.hidden = true }, 250); lit = null; litLabel = ''; renderToday(); return }
+    quick(null); if (egoN) fly(null)
+    swAt = SW.findIndex((x) => !x.gone); if (swAt < 0) swAt = SW.length
+    swEl.hidden = false; showSweep(0); requestAnimationFrame(() => swEl.classList.add('on'))
+  }
+  function showSweep(dir) {
+    const left = SW.filter((x) => !x.gone).length, done = SW.length - left
+    if (swAt >= SW.length || !left) {
+      const n = (k) => SW.filter((x) => x.gone === k).length
+      swEl.innerHTML = `<div class="swh"><b>Sweep done</b><button class="x" data-sw="close" aria-label="Close">×</button></div>
+        <div class="swend"><div class="big">${n('done')} done · ${n('due')} still on · ${n('drop')} dropped</div><div class="meta">Brain is writing it to your ledger now. Still on moved them to ${fmt(D(inAWeek()))}.</div>
+        <button class="go" data-sw="close">Back to the map</button></div>`
+      lit = null; litLabel = ''; return
+    }
+    const r = SW[swAt], who = (r.nodes || []).map((id) => byId[id]).filter(Boolean)
+    lit = new Set(r.nodes || []); litLabel = ''
+    const late = r.due ? daysAgo(r.due) : 0, mine = isMe(r.owes)
+    const whom = mine ? `You owe ${esc((r.to || '').split(/[ ,]/)[0])}` : `${esc((r.owes || '').split(/[ ,]/)[0])} owes ${isMe(r.to) ? 'you' : esc((r.to || '').split(/[ ,]/)[0])}`
+    const card = `<div class="swc${dir ? ' in' + (dir > 0 ? 'r' : 'l') : ''}">
+      <div class="swwho">${who.map((n) => `<span class="sww"><span class="pic ${n.kind === 'person' ? (n.photo ? '' : 'sil') : 'thing'}" style="--tint:${tintOf(n)};${n.photo ? `background-image:url('${n.photo}')` : ''}">${n.kind === 'person' ? '' : esc(initials(n))}</span>${esc(n.label)}</span>`).join('') || `<span class="sww">${esc(mine ? r.to : r.owes)}</span>`}</div>
+      <div class="swt">${esc(r.what)}</div>
+      ${r.seen ? `<div class="swseen"><span aria-hidden="true">✓</span><span><b>Looks done.</b> ${esc(r.seen)}${r.seenLink ? ` · <a href="${esc(r.seenLink)}">see it</a>` : ''}</span></div>` : ''}
+      <div class="swm">${whom}${late > 0 ? ` · <span class="late">since ${fmt(D(r.due))}, ${late} day${late === 1 ? '' : 's'}</span>` : ''} · opened ${fmt(D(r.opened))} · <a href="${obs(r.source)}">open the note</a></div></div>`
+    swEl.innerHTML = `<div class="swh"><b>${r.seen ? 'Looks done' : 'Overdue sweep'}</b><span class="swn">${done + 1} of ${SW.length}</span><button class="x" data-sw="close" aria-label="Close">×</button></div>
+      <div class="swbar"><i style="width:${(done / SW.length) * 100}%"></i></div>${card}
+      <div class="swb"><button data-sw="done"><kbd>D</kbd>${r.seen ? 'Yes, done' : 'Done'}</button><button data-sw="due"><kbd>S</kbd>Still on, by ${fmt(D(inAWeek()))}</button><button data-sw="drop"><kbd>X</kbd>Drop</button></div>
+      <div class="swnav"><button data-sw="back" ${swAt === 0 ? 'disabled' : ''}>← Back</button><button data-sw="skip">Skip →</button></div>`
+  }
+  function choose(how) {
+    const r = SW[swAt]; if (!r || r.gone) return
+    if (how === 'due') send('due|' + inAWeek(), [r.id]); else send(how, [r.id])
+    settle(r.id, how)
+    const next = SW.findIndex((x, i) => i > swAt && !x.gone)
+    swAt = next < 0 ? SW.length : next
+    showSweep(1)
+  }
+  swEl.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-sw]'); if (!b) return
+    const k = b.dataset.sw
+    if (k === 'close') return sweep(false)
+    if (k === 'back') { const prev = [...SW.keys()].reverse().find((i) => i < swAt && !SW[i].gone); if (prev !== undefined) { swAt = prev; showSweep(-1) } return }
+    if (k === 'skip') { const next = SW.findIndex((x, i) => i > swAt && !x.gone); swAt = next < 0 ? SW.length : next; return showSweep(1) }
+    choose(k)
+  })
+  addEventListener('keydown', (e) => {
+    if (document.activeElement === q || document.activeElement?.id === 'kq') return
+    if (!swOn) { if ((e.key === 's' || e.key === 'S') && !e.metaKey && !e.ctrlKey && SW.some((x) => !x.gone)) { e.preventDefault(); sweep(true) } return }
+    const k = { d: 'done', D: 'done', s: 'due', S: 'due', x: 'drop', X: 'drop' }[e.key]
+    if (k) { e.preventDefault(); choose(k) }
+    if (e.key === 'ArrowRight') swEl.querySelector('[data-sw="skip"]')?.click()
+    if (e.key === 'ArrowLeft') swEl.querySelector('[data-sw="back"]')?.click()
+    if (e.key === 'Escape') { e.stopImmediatePropagation(); sweep(false) }
+  }, true)
+  document.addEventListener('click', (e) => { if (e.target.closest('#sweepgo')) sweep(true) })
+  const CAN_ASK = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.brain)
+  const convo = { open: false, turns: [], cur: null }
+  const clean = (t) => String(t || '').replace(/\*\*/g, '').trim()
+  function homeAsk(text) {
+    if (convo.cur && !convo.cur.done) window.webkit.messageHandlers.brain.postMessage({ type: 'stop' })
+    if (convo.cur && convo.cur.done) convo.turns.push(convo.cur)
+    const earlier = convo.turns.map((t) => `Q: ${t.q}\nA: ${t.head}${t.rows.length ? '\n' + t.rows.map((r) => '- ' + r.item).join('\n') : ''}`).join('\n\n')
+    convo.cur = { q: text, at: new Date(), steps: [], kind: '', head: '', note: '', rows: [], none: '', done: false }
+    convo.open = true
+    if (quickN) quick(null)
+    window.webkit.messageHandlers.brain.postMessage({ type: 'ask', q: text, earlier })
+    q.placeholder = 'Ask a follow-up'
+    views(); drawAsk(); tick()
+  }
+  function tick() { if (convo.cur && !convo.cur.done && convo.open && !reduce) { const el = $('asecs'); if (el) el.textContent = Math.round((new Date() - convo.cur.at) / 1000) + ' s'; setTimeout(tick, 1000) } }
+  window.brainLine = (line) => {
+    const c = convo.cur; if (!c) return
+    const f = line.split('||').map((x) => x.trim())
+    const tag = (x) => f[0].startsWith(x + ':') ? f[0].slice(x.length + 1).trim() : null
+    if (tag('STEP') !== null) c.steps.push({ kind: tag('STEP'), text: clean(f[1]), n: '' })
+    else if (tag('FOUND') !== null && c.steps.length) c.steps[c.steps.length - 1].n = tag('FOUND')
+    else if (tag('KIND') !== null) c.kind = tag('KIND')
+    else if (tag('HEAD') !== null) c.head = clean(tag('HEAD'))
+    else if (tag('NOTE') !== null) c.note = clean(tag('NOTE'))
+    else if (tag('NONE') !== null) c.none = clean(tag('NONE'))
+    else if (tag('ROW') !== null) c.rows.push({ item: clean(tag('ROW')), when: f[1] || '', state: f[2] || '', src: f[3] || '', file: f[4] || '' })
+    drawAsk()
+  }
+  window.brainDone = (raw) => {
+    const c = convo.cur; if (!c) return
+    if (!c.head && !c.none) String(raw || '').split('\n').forEach((l) => window.brainLine(l))
+    c.done = true; c.secs = Math.round((new Date() - c.at) / 1000)
+    // the names it is about light up on the dial
+    const said = [c.head, c.note, ...c.rows.map((r) => r.item + ' ' + r.src + ' ' + r.file)].join(' ').toLowerCase()
+    const hit = N.filter((n) => n !== you && (said.includes('wiki/' + n.id + '.md') || said.includes(n.label.toLowerCase()) || (n.kind === 'person' && n.label.split(' ')[0].length > 3 && new RegExp('\\b' + n.label.split(' ')[0].toLowerCase() + '\\b').test(said))))
+    c.lit = hit.map((n) => n.id)
+    if (hit.length) { lit = new Set(c.lit); litLabel = 'In the answer' }
+    drawAsk()
+  }
+  window.brainSeed = (qText, raw) => {
+    convo.turns = []; convo.open = true
+    convo.cur = { q: qText, at: new Date(), steps: [], kind: '', head: '', note: '', rows: [], none: '', done: false }
+    String(raw || '').split('\n').forEach((l) => l.trim() && window.brainLine(l))
+    window.brainDone(raw)
+    q.placeholder = 'Ask a follow-up'
+    views(); drawAsk()
+  }
+  window.brainFocus = () => { q.focus() }
+  function closeAsk() {
+    if (convo.cur && !convo.cur.done) window.webkit.messageHandlers.brain.postMessage({ type: 'stop' })
+    convo.open = false; convo.turns = []; convo.cur = null; lit = null; litLabel = ''
+    q.placeholder = egoN ? `Ask about ${egoN.label.split(' ')[0]}` : 'Ask Brain or find anything'
+    views()
+  }
+  const hm = (d) => `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
+  function turnHtml(c, live) {
+    const steps = c.steps.length ? `<div class="asteps">${c.steps.map((s, i) => `<div class="ast${live && i === c.steps.length - 1 ? ' now' : ''}"><i></i><span>${esc(s.text)}</span>${s.n ? `<em>${esc(s.n)}</em>` : ''}</div>`).join('')}</div>` : ''
+    if (!c.done) return `<div class="aq">You asked · ${hm(c.at)}</div><div class="aqt">${esc(c.q)}</div>${steps}<div class="athink"><span class="dots"><i></i><i></i><i></i></span>Thinking · <span id="asecs">0 s</span><button class="astop" id="astop">Stop</button></div>`
+    const rows = c.rows.length ? `<div class="box arows">${c.rows.map((r) => `<a class="arow" href="${obs(r.file || 'commitments.md')}"><span class="ad ${esc(r.state)}"></span><span class="ai">${esc(r.item)}</span><span class="aw">${esc(r.when)}${r.src ? `<b>${esc(r.src)}</b>` : ''}</span></a>`).join('')}</div>` : ''
+    const people = (c.lit || []).map((id) => byId[id]).filter(Boolean)
+    return `<div class="aq">You asked · ${hm(c.at)} · read in ${c.secs || 0} s</div><div class="aqt">${esc(c.q)}</div>
+      ${steps ? `<details class="atrace"><summary>Read ${c.steps.length} source${c.steps.length === 1 ? '' : 's'}</summary>${steps}</details>` : ''}
+      ${c.none ? `<div class="ahead">Not in your brain</div><p class="anote">${esc(c.none)}</p>` : c.head ? `<div class="ahead">${esc(c.head)}</div>${c.note ? `<p class="anote">${esc(c.note)}</p>` : ''}${rows}` : '<div class="ahead">Brain did not answer</div><p class="anote">Try again in a moment.</p>'}
+      ${people.length ? `<div class="alit"><span>On the dial</span>${people.map((n) => `<button class="node-chip" data-fly="${n.id}"><span class="sh" style="${SHAPE[n.kind] || ''}"></span>${esc(n.label)}</button>`).join('')}</div>` : ''}`
+  }
+  function drawAsk() {
+    const v = $('v-ask'); if (!convo.open) return
+    v.innerHTML = `<div class="ntop"><button class="back" id="aback"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>${({ review: 'Review', week: 'Week' })[tab] || 'Today'}</button><button class="openp" id="anew">New question</button></div>
+      ${convo.turns.map((t) => `<div class="aold">${turnHtml(t, false)}</div>`).join('')}<div class="acur">${turnHtml(convo.cur, true)}</div>`
+    v.scrollTop = v.scrollHeight
+  }
+  document.addEventListener('click', (e) => {
+    if (e.target.closest('#aback')) closeAsk()
+    if (e.target.closest('#anew')) { closeAsk(); q.focus() }
+    if (e.target.closest('#astop')) { window.webkit.messageHandlers.brain.postMessage({ type: 'stop' }); if (convo.cur) { convo.cur.done = true; convo.cur.none = 'Stopped.' } drawAsk() }
+  })
+  // ---------- drawing, all in screen space so names stay 12 px at any zoom
+  const UNITS = [[1], [0, 1, 2], [0.5, 1.5], [1]]   // the brain mark: Studio's seven units as four columns
+  function mark(x, y, s, color, t) {
+    const u = s / 3.4, gap = s / 2.6
+    cx.fillStyle = color
+    UNITS.forEach((col, i) => col.forEach((k, j) => {
+      const beat = reduce ? 1 : 0.9 + 0.1 * (Math.sin(t / 700 - i * 0.9) + 1) / 2
+      const px = x + (i - 1.5) * gap, py = y + (j - (col.length - 1) / 2) * u * 1.25, uu = u * beat
+      cx.beginPath(); cx.roundRect(px - uu / 2, py - uu / 2, uu, uu, uu * 0.35); cx.fill()
+    }))
+  }
+  const fitted = new Map()
+  const fit = (s, w, font) => {
+    const key = s + '|' + w + '|' + font
+    if (fitted.has(key)) return fitted.get(key)
+    cx.font = font; let t = s
+    if (cx.measureText(s).width > w) { while (t.length > 3 && cx.measureText(t + '…').width > w) t = t.slice(0, -1); t = t.trimEnd() + '…' }
+    fitted.set(key, t); return t
+  }
+  const rgba = (hex, a) => { const h = hex.replace('#', ''); const v = h.length === 3 ? h.split('').map((c) => parseInt(c + c, 16)) : [0, 2, 4].map((i) => parseInt(h.slice(i, i + 2), 16)); return `rgba(${v[0]},${v[1]},${v[2]},${a})` }
+  const initials = (n) => { const w = n.label.replace(/[^\p{L}\p{N} ]/gu, ' ').split(/\s+/).filter(Boolean); return ((w[0] || '?')[0] + (w.length > 1 && n.kind === 'person' ? w[1][0] : w.length > 1 ? w[1][0] : (w[0][1] || ''))).toUpperCase() }
+  let pal = {}
+  const TINTS = ['#9ea3ac']
+  const tintOf = (n) => { let h = 0; for (const c of n.id) h = (h * 33 + c.charCodeAt(0)) >>> 0; return TINTS[h % TINTS.length] }
+  const photos = {}
+  N.forEach((n) => { if (n.photo) { const im = new Image(); im.src = n.photo; photos[n.id] = im } })
+  function ring(n, x, y, r, gap) {
+    cx.beginPath()
+    if (n.kind === 'person' || n.kind === 'topic') cx.arc(x, y, r + gap, 0, Math.PI * 2)
+    else cx.roundRect(x - r - gap, y - r - gap, (r + gap) * 2, (r + gap) * 2, r * (n.kind === 'company' ? 0.34 : 0.46) + gap)
+  }
+  function shape(n, x, y, r, strong) {
+    const person = n.kind === 'person', t = tintOf(n)
+    cx.save()
+    cx.beginPath()
+    if (person || n.kind === 'topic') cx.arc(x, y, r, 0, Math.PI * 2)
+    else cx.roundRect(x - r, y - r, r * 2, r * 2, r * (n.kind === 'company' ? 0.34 : 0.46))
+    const gr = cx.createLinearGradient(x, y - r, x, y + r); gr.addColorStop(0, '#b6bac2'); gr.addColorStop(1, '#8b9099'); cx.fillStyle = gr; cx.fill()
+    const im = photos[n.id]
+    cx.clip()
+    if (im && im.complete && im.naturalWidth) {
+      const k = Math.max((r * 2) / im.naturalWidth, (r * 2) / im.naturalHeight)
+      cx.drawImage(im, x - (im.naturalWidth * k) / 2, y - (im.naturalHeight * k) / 2, im.naturalWidth * k, im.naturalHeight * k)
+    } else if (person) {
+      cx.fillStyle = 'rgba(255,255,255,0.92)'
+      cx.beginPath(); cx.arc(x, y - r * 0.18, r * 0.36, 0, Math.PI * 2); cx.fill()
+      cx.beginPath(); cx.ellipse(x, y + r * 0.78, r * 0.68, r * 0.55, 0, 0, Math.PI * 2); cx.fill()
+    } else if (r >= 9.5) {
+      cx.fillStyle = '#ffffff'; cx.font = `650 ${Math.round(r * 0.72)}px system-ui`; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+      cx.fillText(initials(n), x, y + r * 0.04); cx.textAlign = 'left'
+    }
+    cx.restore()
+    if (strong) { cx.lineWidth = 1.6; cx.strokeStyle = pal.ink; ring(n, x, y, r, 1.5); cx.stroke() }
+    if (n.kind === 'company') { cx.lineWidth = 1; cx.strokeStyle = pal.ink3; ring(n, x, y, r, 4); cx.stroke() }
+  }
+  const size = (n) => n.kind === 'company' ? 11 + n.act * 4 : n.kind === 'topic' ? 7 + n.act * 2 : n.kind === 'person' ? 9 + n.act * 6 : 8.5 + n.act * 5
+  // where a name sits on the dial's clock, 0 at the top going clockwise: the opening sweep reveals in this order
+  const clock = (x, y) => { let a = Math.atan2(x, -y); if (a < 0) a += Math.PI * 2; return a / (Math.PI * 2) }
+  const hash = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 997; return h / 997 }
+  const changedSet = new Set(B.changed)
+  let introStart = 0
+  function draw(now) {
+    const ink = css('--ink'), ink2 = css('--ink2'), ink3 = css('--ink3'), pink = css('--pink'), bg = css('--bg'), bg2 = css('--bg2'), chip2 = css('--chip2'), pinkBg = css('--pinkBg')
+    pal = { ink, ink2, ink3, bg, card: css('--card') }
+    const dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    const z = cam.z, dialA = 1 - egoK * 0.92
+    const [ox, oy] = S(0, 0)
+    const g = cx.createRadialGradient(ox, oy, 0, ox, oy, Math.max(stage.w, stage.h) * 0.75)
+    // in Brain's own window the page is clear: the macOS glass behind it is the background
+    if (NATIVE && qs.has('clear')) cx.clearRect(0, 0, W, H); else { g.addColorStop(0, bg2); g.addColorStop(1, bg); cx.fillStyle = g; cx.fillRect(0, 0, W, H) }
+    // the opening: a sweep goes round once and lights the names as it passes
+    const intro = reduce ? 1.2 : Math.min(1.2, (now - introStart) / 1400)
+    const reveal = (c) => Math.max(0, Math.min(1, (intro - c) * 5))
+    // the core: a soft pink glow where the brain sits, the inner ring is warm
+    const cg = cx.createRadialGradient(ox, oy, 0, ox, oy, ST[1] * R * z)
+    cg.addColorStop(0, dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.035)'); cg.addColorStop(1, 'rgba(0,0,0,0)')
+    cx.globalAlpha = dialA; cx.fillStyle = cg; cx.beginPath(); cx.arc(ox, oy, ST[1] * R * z, 0, Math.PI * 2); cx.fill()
+    // the rings and the rim
+    cx.lineWidth = 1
+    ST.forEach((s, t) => {
+      // the band, and a fine dashed line through its middle
+      cx.globalAlpha = dialA * (t === 0 ? (dark ? 0.1 : 0.08) : dark ? 0.045 : 0.035); cx.fillStyle = ink
+      cx.beginPath(); cx.arc(ox, oy, (s + BAND * 1.4) * R * z, 0, Math.PI * 2); cx.arc(ox, oy, (s - BAND * 1.4) * R * z, 0, Math.PI * 2, true); cx.fill()
+      cx.globalAlpha = (0.45 - t * 0.08) * dialA; cx.strokeStyle = ink3; cx.setLineDash([2, 5])
+      cx.beginPath(); cx.arc(ox, oy, s * R * z, 0, Math.PI * 2); cx.stroke()
+    })
+    cx.setLineDash([]); cx.globalAlpha = 0.18 * dialA; cx.strokeStyle = ink3; cx.beginPath(); cx.arc(ox, oy, R * z, 0, Math.PI * 2); cx.stroke()
+    cx.font = '600 9px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
+    ;['NOW', 'THIS WEEK', 'QUIET'].forEach((s, t) => { const ty = oy + ST[t] * R * z + 1; cx.font = '600 9px system-ui'; const tw = cx.measureText(s).width + 16; cx.globalAlpha = dialA; cx.fillStyle = bg2; cx.fillRect(ox - tw / 2, ty - 6, tw, 12); cx.globalAlpha = 0.95 * dialA; cx.fillStyle = t === 0 ? ink2 : ink3; cx.fillText(s.split('').join(String.fromCharCode(8202)), ox, ty) })
+    // the sweep itself
+    if (intro < 1.05 && !reduce) {
+      const a = intro * Math.PI * 2 - Math.PI / 2
+      const cgr = cx.createConicGradient(a - 0.9, ox, oy)
+      const sw0 = dark ? '#ffffff' : '#000000'
+      cgr.addColorStop(0, rgba(sw0, 0)); cgr.addColorStop(0.9 / (Math.PI * 2), rgba(sw0, dark ? 0.1 : 0.06)); cgr.addColorStop(0.9 / (Math.PI * 2) + 0.001, rgba(sw0, 0))
+      cx.globalAlpha = Math.min(1, (1.05 - intro) * 6); cx.fillStyle = cgr; cx.beginPath(); cx.arc(ox, oy, R * z, 0, Math.PI * 2); cx.fill()
+      cx.strokeStyle = ink2; cx.lineWidth = 1.2; cx.beginPath(); cx.moveTo(ox, oy); cx.lineTo(ox + Math.cos(a) * R * z, oy + Math.sin(a) * R * z); cx.stroke()
+    }
+    // what each half holds, outside the rim where it starts
+    cx.font = '600 9.5px system-ui'; cx.textBaseline = 'middle'
+    for (const h of heads) {
+      const p = polar(h.side, h.ang - 0.05, R + 30), [sx, sy] = S(p.x, p.y)
+      cx.globalAlpha = dialA * 0.9 * reveal(clock(p.x, p.y)); cx.fillStyle = ink3; cx.textAlign = h.side < 0 ? 'right' : 'left'
+      cx.fillText(`${h.text.toUpperCase().split('').join(String.fromCharCode(8202))}  ${h.count}`, sx, sy)
+    }
+    const focus = egoN || hover
+    const isN = (n) => egoN && (n === egoN || egoPos.has(n))
+    const curve = (a, b) => { const [ax, ay] = S(a.x, a.y), [bx, by] = S(b.x, b.y), [mx, my] = S((a.x + b.x) * 0.16, (a.y + b.y) * 0.16); cx.beginPath(); cx.moveTo(ax, ay); cx.quadraticCurveTo(mx, my, bx, by); cx.stroke() }
+    // lines only where they say something: between the few that need you now, and a hovered name's own
+    if (!egoN) {
+      cx.lineWidth = 1
+      for (const p of web) {
+        if (p.a.show < 0.5 || p.b.show < 0.5) continue
+        const mine = hover && (p.a === hover || p.b === hover)
+        if (!mine && ((p.a.tierNow ?? 2) > 0 || (p.b.tierNow ?? 2) > 0 || hover || lit)) continue
+        cx.globalAlpha = dialA * Math.min(reveal(clock(p.a.x, p.a.y)), reveal(clock(p.b.x, p.b.y))) * (mine ? 0.5 : dark ? 0.1 : 0.06)
+        cx.strokeStyle = mine ? ink : ink2; curve(p.a, p.b)
+      }
+      if (hover && hover.show > 0.5) {
+        cx.strokeStyle = ink2
+        for (const id of nbr[hover.id] || []) { const m = byId[id]; if (!m || m.show < 0.5 || m === you || !m.row) continue; cx.globalAlpha = 0.3; curve(hover, m) }
+      }
+    }
+    if (egoN && egoK > 0.02) {
+      const [fx, fy] = S(egoN.x, egoN.y)
+      for (const [m, p] of egoPos) {
+        if (m.show < 0.05) continue
+        const [bx, by] = S(m.x, m.y)
+        cx.globalAlpha = egoK * m.show * (0.18 + Math.min(1, p.k / 6) * 0.4); cx.strokeStyle = ink2; cx.lineWidth = 1 + Math.min(1.5, p.k / 6)
+        cx.beginPath(); cx.moveTo(fx, fy); cx.lineTo(bx, by); cx.stroke()
+      }
+    }
+    // which names get written: the ones that need you now, plus whatever you point at, search or light.
+    // The rest stay dots. A name that would touch another waits for the pointer.
+    // every dot counts as taken, so a name never sits on someone else's dot
+    const placed = egoN ? [] : N.filter((n) => n !== you && n.row && n.show > 0.3).map((n) => { const [sx, sy] = S(n.x, n.y), r = Math.max(4, size(n) * z) + 2; return { x0: sx - r, x1: sx + r, y0: sy - r, y1: sy + r } })
+    const want = N.filter((n) => n !== you && n.row && n.show > 0.3 && !egoN && (n === hover || n === kb || (lit ? lit.has(n.id) : (n.tierNow ?? 2) === 0 || z > homeZ * 1.25 || (z > homeZ * 1.05 && (n.tierNow ?? 2) === 1))))
+      .sort((a, b) => (b === hover) - (a === hover) || (b === kb) - (a === kb) || b.act - a.act)
+    const labelOf = new Map()
+    for (const n of want) {
+      const [sx, sy] = S(n.x, n.y), r = Math.max(4, size(n) * z) + 3
+      const strong = n === hover || (n.tierNow ?? 2) === 0 || (lit && lit.has(n.id))
+      const font = `${strong ? 600 : 500} 12.5px system-ui`, label = fit(n.label, 180, font)
+      cx.font = font; const w = cx.measureText(label).width
+      let badgeW = 0
+      if (n.overdue) { cx.font = '600 10.5px system-ui'; badgeW = cx.measureText(String(n.overdue)).width + 18 }
+      // outward first; if the outside is full, the name goes inward, into the quiet middle
+      let ok = null
+      for (const dir of [n.side, -n.side]) {
+        const x0 = dir < 0 ? sx - r - 8 - w - badgeW : sx + r + 8, x1 = x0 + w + badgeW
+        for (const dy of [0, -10, 10, -19, 19, -28, 28]) {
+          const box = { x0: x0 - 4, x1: x1 + 4, y0: sy + dy - 9, y1: sy + dy + 9 }
+          if (!placed.some((b) => b.x0 < box.x1 && box.x0 < b.x1 && b.y0 < box.y1 && box.y0 < b.y1)) { ok = { box, dy, dir, x0 }; break }
+        }
+        if (ok) break
+      }
+      if (!ok && n !== hover && n !== kb) continue
+      if (!ok) { const x0 = n.side < 0 ? sx - r - 8 - w - badgeW : sx + r + 8; ok = { box: { x0: x0 - 4, x1: x0 + w + badgeW + 4, y0: sy - 9, y1: sy + 9 }, dy: 0, dir: n.side, x0 } }
+      placed.push(ok.box)
+      labelOf.set(n, { label, font, w, badgeW, dir: ok.dir, x: ok.dir < 0 ? ok.x0 + badgeW : ok.x0, y: sy + ok.dy, strong })
+    }
+    let quiet = 0
+    for (const n of N) {
+      n.box = null; n.dbox = null
+      if (n === you || n.show < 0.02) continue
+      const inEgo = isN(n), fade = egoN ? (inEgo ? 1 : 1 - egoK * 0.985) : 1
+      const dim = !egoN && lit && !lit.has(n.id)
+      const strong = n === focus || (lit && lit.has(n.id)) || (n.tierNow ?? 2) === 0
+      const [sx, sy] = S(n.x, n.y)
+      const r = Math.max(4, size(n) * z) * (n === egoN ? 1.7 : 1)
+      n.hv += ((n === hover || n === kb && document.activeElement === cv ? 1 : 0) - n.hv) * (reduce ? 1 : 0.25)
+      const rr = r * (1 + 0.3 * n.hv)
+      const rv = n.row ? reveal(clock(n.x, n.y)) : 1
+      if (n.row && !labelOf.has(n) && !egoN) quiet++
+      // the dot
+      const dotA = n.show * fade * rv * (dim ? 0.16 : strong ? 1 : 0.55 + 0.35 * n.act)
+      if (n.overdue && !dim && fade > 0.5) {
+        const pp = reduce ? 0.5 : (Math.sin(now / 650 + (n.row ? n.row.ang * 9 : 0)) + 1) / 2
+        cx.globalAlpha = n.show * fade * rv * (0.3 + 0.45 * pp); cx.strokeStyle = pink; cx.lineWidth = 1.5
+        ring(n, sx, sy, rr, 3.5 + pp * 1.5); cx.stroke()
+      }
+      if (n.hv > 0.02 && !egoN) { cx.globalAlpha = n.hv * 0.9; cx.fillStyle = chip2; ring(n, sx, sy, rr, 9); cx.fill() }
+      cx.globalAlpha = dotA; shape(n, sx, sy, rr, (strong || n === egoN) && !dim)
+      if (n.kind === 'person' && !dim) {
+        // warmth: a thin arc, full when you spoke today, gone after a month
+        const warm = Math.max(0, 1 - (n.contact ? between(n.contact, asOf) : 99) / 30)
+        if (warm > 0) { cx.globalAlpha = n.show * fade * rv * 0.5; cx.strokeStyle = ink2; cx.lineWidth = 1.1; cx.beginPath(); cx.arc(sx, sy, rr + 2.6, -Math.PI / 2, -Math.PI / 2 + warm * Math.PI * 2); cx.stroke() }
+      }
+      if (n === kb && document.activeElement === cv) { cx.globalAlpha = 1; cx.strokeStyle = ink; cx.lineWidth = 1.5; ring(n, sx, sy, rr, 7); cx.stroke() }
+      if (!egoN && n.row) n.dbox = { x0: sx - Math.max(10, rr + 6), x1: sx + Math.max(10, rr + 6), y0: sy - Math.max(10, rr + 6), y1: sy + Math.max(10, rr + 6) }
+      const Lnow = labelOf.get(n)
+      n.labA = (n.labA || 0) + ((Lnow ? 1 : 0) - (n.labA || 0)) * (reduce ? 1 : 0.18)
+      if (Lnow) n.labOff = { ...Lnow, dx: Lnow.x - sx, dy: Lnow.y - sy }
+      const L = Lnow || (n.labA > 0.03 && n.labOff ? { ...n.labOff, x: sx + n.labOff.dx, y: sy + n.labOff.dy } : null)
+      if (Lnow && changedSet.has(n.id) && !reduce && !dim && rv >= 1) {
+        const ph = ((now / 1000 + hash(n.id) * 7) % 7) / 1.5
+        if (ph < 1) { const e = 1 - Math.pow(1 - ph, 3); cx.globalAlpha = (1 - ph) * 0.8; cx.fillStyle = pink; cx.beginPath(); cx.arc(ox + (sx - ox) * e, oy + (sy - oy) * e, 2.2, 0, Math.PI * 2); cx.fill() }
+      }
+      // its name, beside it, outward
+      if (L) {
+        const a = n.show * rv * (1 - egoK) * n.labA
+        cx.globalAlpha = a; cx.fillStyle = L.strong ? ink : ink2; cx.font = L.font; cx.textBaseline = 'middle'; cx.textAlign = 'left'
+        cx.fillText(L.label, L.x, L.y)
+        if (L.y !== sy) { cx.globalAlpha = a * 0.4; cx.strokeStyle = ink3; cx.lineWidth = 1; cx.beginPath(); cx.moveTo(sx + L.dir * (rr + 3), sy); cx.lineTo(L.dir < 0 ? L.x + L.w + 3 : L.x - 3, L.y); cx.stroke() }
+        if (n.overdue) {
+          const s = String(n.overdue); cx.font = '600 10.5px system-ui'; const bw = L.badgeW - 8
+          const bx = L.dir < 0 ? L.x - 8 - bw : L.x + L.w + 8
+          cx.globalAlpha = a; cx.fillStyle = pinkBg; cx.beginPath(); cx.roundRect(bx, L.y - 8, bw, 16, 8); cx.fill()
+          cx.fillStyle = pink; cx.textAlign = 'center'; cx.fillText(s, bx + bw / 2, L.y + 0.5); cx.textAlign = 'left'
+        }
+        if (!egoN && Lnow) n.box = { x0: Math.min(L.x, sx) - 8, x1: Math.max(L.x + L.w, sx) + 8, y0: L.y - 10, y1: L.y + 10 }
+      }
+      // inside a name: the gathered ones carry their names beside them
+      if (inEgo && n !== egoN && egoK > 0.02) {
+        const pe = egoPos.get(n), side = pe.side
+        const font = `${n === hover ? 600 : 500} 12.5px system-ui`, label = fit(n.label, 170, font)
+        cx.font = font; const w = cx.measureText(label).width
+        const lx0 = side < 0 ? sx - rr - 9 - w : sx + rr + 9
+        if (n.hv > 0.02) { cx.globalAlpha = n.hv * egoK * 0.9; cx.fillStyle = chip2; const x0 = Math.min(lx0, sx - rr) - 8, x1 = Math.max(lx0 + w, sx + rr) + 8; cx.beginPath(); cx.roundRect(x0, sy - 12, x1 - x0, 24, 12); cx.fill() }
+        cx.globalAlpha = egoK * n.show; cx.fillStyle = ink; cx.textBaseline = 'middle'; cx.textAlign = 'left'; cx.fillText(label, lx0, sy)
+        const sub = [KIND[n.kind], n.overdue ? `${n.overdue} overdue` : ''].filter(Boolean).join(' · ')
+        cx.font = '400 11px system-ui'; cx.fillStyle = ink2; const sw = cx.measureText(sub).width
+        cx.fillText(sub, side < 0 ? sx - rr - 9 - sw : lx0, sy + 14)
+        n.box = { x0: Math.min(lx0, sx - rr) - 10, x1: Math.max(lx0 + w, sx + rr) + 10, y0: sy - 13, y1: sy + 20 }
+      }
+      if (n === egoN && egoK > 0.02) {
+        cx.globalAlpha = egoK; cx.fillStyle = ink; cx.textAlign = 'center'; cx.textBaseline = 'top'
+        cx.font = '600 15px system-ui'; cx.fillText(n.label, sx, sy + rr + 10)
+        cx.font = '400 11.5px system-ui'; cx.fillStyle = ink2; cx.fillText(`${KIND[n.kind]} · ${TIERNAME[n.tierNow ?? 2].toLowerCase()}`, sx, sy + rr + 29)
+        cx.textAlign = 'left'
+        n.box = { x0: sx - 20, x1: sx + 20, y0: sy - 20, y1: sy + 20 }
+      }
+    }
+    // what is not written, said once, under the dial
+    if (!egoN && !lit && quiet) { const bx = stage.cx, by = stage.h - 76; cx.globalAlpha = dialA * 0.9 * Math.min(1, intro); cx.fillStyle = ink3; cx.font = '500 12px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(`Closer to the middle, needs you more · ${quiet} more names: pinch to zoom in, two fingers to move, / to find`, bx, by); cx.textAlign = 'left' }
+    // the middle: the brain mark, it fades as you fly away from it
+    cx.globalAlpha = 1 - egoK * 0.85; mark(ox, oy, 34 * Math.max(0.9, Math.min(1.3, z)), ink, now)
+    cx.globalAlpha = 1
+    if (litLabel && lit && !egoN) { cx.fillStyle = ink2; cx.font = '500 12px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'alphabetic'; cx.fillText(`${litLabel} · ${lit.size} lit`, stage.cx, stage.h - 74); cx.textAlign = 'left' }
+  }
+  function frame(now) {
+    const k = reduce ? 1 : 0.12
+    for (const n of N) { n.x += (n.tx - n.x) * k; n.y += (n.ty - n.y) * k; n.show += (n.want - n.show) * (reduce ? 1 : 0.1) }
+    egoK += ((egoN ? 1 : 0) - egoK) * (reduce ? 1 : 0.14)
+    cam.x += (camTo.x - cam.x) * k; cam.y += (camTo.y - cam.y) * k; cam.z += (camTo.z - cam.z) * k
+    draw(now); placeQuick()
+    requestAnimationFrame(frame)
+  }
+
+  // ---------- start
+  dial(); relayout(false); renderToday(); renderReview(); renderWeek()
+  // ?sweep: open on the sweep (for pictures)
+  if (qs.has('sweep') && SW.some((x) => !x.gone)) setTimeout(() => sweep(true), 50)
+  whenEl.textContent = 'Today'
+  document.fonts.ready.then(() => {
+    measure(); counts(); setTab(tab, true); views()
+    cam.x = camTo.x; cam.y = camTo.y; cam.z = homeZ * 0.9; introStart = performance.now()
+    if (qs.get('count')) $('counts').querySelector(`[data-k="${qs.get('count')}"]`)?.click()
+    if (qs.get('rewind')) { const v = Math.round((D(qs.get('rewind')) - t0) / 864e5); tEl.value = v; setTime(v) }
+    if (qs.get('select') && byId[qs.get('select')]) { fly(byId[qs.get('select')]); (qs.get('hop') || '').split(',').filter((id) => byId[id]).forEach((id) => fly(byId[id], true)) }
+    if (qs.get('q')) { q.value = qs.get('q'); q.dispatchEvent(new Event('input')) }
+    if (qs.get('hover') && byId[qs.get('hover')]) hover = byId[qs.get('hover')]
+    if (qs.get('quick') && byId[qs.get('quick')]) setTimeout(() => quick(byId[qs.get('quick')]), 50)
+    if (qs.has('sweep')) setTimeout(() => sweep(true), 60)
+    // ?debug: hooks for the motion recorder only
+    if (qs.has('debug')) window.__bh = { quick, fly, byId, sweep, choose }
+    if (qs.get('z')) { moved = true; camTo.z = fitZ * +qs.get('z'); camTo.x = +(qs.get('x') || 0); camTo.y = +(qs.get('y') || 0) }
+    if (reduce) { cam.x = camTo.x; cam.y = camTo.y; cam.z = camTo.z; N.forEach((n) => { n.x = n.tx; n.y = n.ty; n.show = n.want }); egoK = egoN ? 1 : 0 }
+    requestAnimationFrame(frame)
+  })
+})()
+</script>
+</body>
+</html>

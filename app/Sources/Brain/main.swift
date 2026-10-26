@@ -26,6 +26,9 @@ final class App: NSObject, NSApplicationDelegate {
   private let island = IslandPanel()
   /// every question and its answer, kept in private/brain/
   private let answers = AnswerHistory()
+  /// Brain Home: the dial of your brain, in a window
+  private let home = BrainHome()
+  private var homeTask: Process?
   /// takes in a row where the mic sent nothing at all
   private var silentTakes = 0
   private let whisper = Whisper()
@@ -56,6 +59,10 @@ final class App: NSObject, NSApplicationDelegate {
   /// brain:// links and the Services menu (Everywhere.swift)
   private let everywhere = Everywhere()
 
+  /// opening Brain again (Spotlight, Finder, the Dock) shows Brain Home
+  func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+    home.show(); return true
+  }
   func application(_ application: NSApplication, open urls: [URL]) {
     for u in urls { everywhere.handle(u) }
   }
@@ -66,6 +73,13 @@ final class App: NSObject, NSApplicationDelegate {
     everywhere.onOpen = { [weak self] in self?.showQuick(false) }
     everywhere.onSaved = { [weak self] in self?.island.show(.note("Saved to Brain", "in today's notes"), for: 2) }
     everywhere.onSettings = { [weak self] in self?.island.model.quickPage = "settings"; self?.showQuick(true) }
+    everywhere.onHome = { [weak self] in self?.home.show() }
+    everywhere.onPage = { [weak self] rel in self?.island.hide(); self?.home.show(page: rel) }
+    everywhere.onDone = { [weak self] in self?.island.show(.note("Done", "in your ledger"), for: 2) }
+    Brain.onOpen = { [weak self] rel in self?.island.hide(); self?.home.show(page: rel) }
+    home.onLink = { [weak self] url in self?.everywhere.handle(url) }
+    home.onAsk = { [weak self] q, earlier, line, done in self?.homeAsk(q, earlier: earlier, line: line, done: done) }
+    home.onStop = { [weak self] in self?.homeTask?.terminate(); self?.homeTask = nil }
     NSApp.servicesProvider = everywhere
     NSUpdateDynamicServices()
     island.setUp()
@@ -366,6 +380,22 @@ final class App: NSObject, NSApplicationDelegate {
     })
   }
 
+  /// A question from Brain Home: the same bridge as the notch, the lines streamed to the page, kept in
+  /// the history like any other question; the notch stays quiet.
+  private func homeAsk(_ q: String, earlier: String, line: @escaping (String) -> Void, done: @escaping (String) -> Void) {
+    homeTask?.terminate()
+    let since = Date()
+    homeTask = Brain.stream(["ask", q] + (earlier.isEmpty ? [] : [earlier]), onLine: line, done: { [weak self] out in
+      guard let self else { return }
+      self.homeTask = nil
+      let secs = Int(Date().timeIntervalSince(since).rounded())
+      let data = Answer(out)
+      self.answers.remember(HistoryItem(q: q, at: since, head: data.kind == "none" ? "Not in the brain" : data.head, raw: out, seconds: secs))
+      Log.write("brain home: answer, \(out.split(separator: "\n").count) lines in \(secs) s")
+      done(out)
+    })
+  }
+
   /// The page an answer came from: the first .md file named in its sources, else the ledger.
   static func file(in sources: [String]) -> String {
     let root = Config.repo.path
@@ -424,6 +454,8 @@ final class App: NSObject, NSApplicationDelegate {
       }
     case "obsidian":
       Brain.open(answerFile); closeCard()
+    case "brain":
+      island.hide(); home.show(seed: lastQA)
     case "dismiss":
       if let e = prepEvent, recorder == nil { prepDismissed.insert(e.id); prepPhase = nil; island.rest = callPhase }
       closeCard()
@@ -500,7 +532,7 @@ final class App: NSObject, NSApplicationDelegate {
     let expanded: Bool = { if case .quick(let e) = island.model.phase { return e }; return false }()
     Log.write("quick: \(id)")
     switch id {
-    case "folder": island.hide(); NSWorkspace.shared.open(Config.repo)
+    case "home": island.hide(); home.show()
     case "warm": setWarm(!mic.alwaysWarm); showQuick(expanded)
     case "more": island.model.quickPage = ""; showQuick(!expanded)
     case "back": island.model.quickPage = ""; showQuick(true)
@@ -630,7 +662,8 @@ final class App: NSObject, NSApplicationDelegate {
     warmItem = warm
     m.addItem(warm)
     m.addItem(.separator())
-    m.addItem(withTitle: "Open your brain", action: #selector(openRepo), keyEquivalent: "")
+    m.addItem(withTitle: "Open Brain Home", action: #selector(openHome), keyEquivalent: "")
+    m.addItem(withTitle: "Open the brain folder", action: #selector(openRepo), keyEquivalent: "")
     m.addItem(withTitle: "Reload words", action: #selector(reloadVocab), keyEquivalent: "")
     m.addItem(withTitle: "Open history", action: #selector(openHistory), keyEquivalent: "")
     m.addItem(.separator())
@@ -652,6 +685,7 @@ final class App: NSObject, NSApplicationDelegate {
     on ? mic.warmUp() : mic.coolNow()
   }
 
+  @objc private func openHome() { home.show() }
   @objc private func openRepo() { NSWorkspace.shared.open(Config.repo) }
   @objc private func reloadVocab() { vocab = Vocab.load() }
   @objc private func openHistory() { NSWorkspace.shared.open(History.root) }

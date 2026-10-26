@@ -59,7 +59,12 @@ Needs macOS or Linux, git, python3 and Claude Code. Node.js too, if you connect 
 | `brain ls` | what is waiting in `raw/` |
 | `brain done <id>` | mark a ledger row done |
 | `brain health` | state of the scheduled jobs |
+| `brain home` | Brain Home: the map of your people and projects, what is owed, what to review |
 | `brain slack add <name>` | read one more Slack workspace (see Slack, below) |
+
+## Brain Home
+
+The dashboard of your brain, in [`home/`](home/): a dial with everyone and everything in your wiki, closer to the middle when it needs you, and a panel with Today, Week and Review (what Brain filed since yesterday, waiting for your yes). Click a name for what is owed both ways and the last call; mark things done, keep or drop them, and the ledger updates. `brain home` opens it in the browser; the Mac app opens it in its own window, with Ask built in.
 
 ## The Mac app
 
@@ -79,6 +84,7 @@ Optional, in [`app/`](app/README.md): it lives in the notch. Hold a key and talk
 | `data/` | what the jobs write: today's brief |
 | `prompts/` | the long prompts behind the loops. Edit them to change behavior |
 | `app/` | the Mac app, optional |
+| `home/` | Brain Home, the dashboard |
 
 ## Scheduled jobs
 
