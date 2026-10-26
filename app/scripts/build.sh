@@ -61,6 +61,13 @@ else
   echo "signed ad-hoc: macOS will ask for Microphone and Accessibility again after each rebuild"
 fi
 mkdir -p "$HOME/Applications" "$HOME/Library/LaunchAgents"
+# an older build under another launch agent would start a second copy of the same app: retire it
+for old in "$HOME"/Library/LaunchAgents/*.plist; do
+  [ -f "$old" ] && [ "$old" != "$AGENT" ] || continue
+  grep -q "Applications/Brain.app" "$old" || continue
+  launchctl bootout "gui/$(id -u)" "$old" 2>/dev/null || true
+  rm -f "$old"; echo "removed an older launch agent: $(basename "$old")"
+done
 launchctl bootout "gui/$(id -u)/$LABEL" 2>/dev/null || true
 for i in $(seq 1 20); do pgrep -x Brain >/dev/null || break; sleep 0.2; done
 rm -rf "$HOME/Applications/Brain.app" && cp -R "$APP" "$HOME/Applications/Brain.app"
