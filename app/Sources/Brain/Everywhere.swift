@@ -9,6 +9,7 @@ import AppKit
 ///     brain://page?path=wiki/sam.md         a page from the repo, read in Brain Home
 ///     brain://done?id=c1234567              a ledger row done, as `brain done c1234567` in a terminal
 ///     brain://ledger?v=keep&ids=c1,c2       Brain Home's review: done, keep, drop, or due with a date
+///     brain://fortune?v=good&id=f1234567    a fortune's verdict: good, noise, seen or open
 ///     brain://settings                      settings, in the notch
 ///
 ///   Services, in every app's right-click menu and the app menu (System Settings can give them keys)
@@ -52,6 +53,10 @@ final class Everywhere: NSObject {
       if v == "done" { onDone?() }
     case "save", "note":
       if let text = item("text", "q", "note"), !text.isEmpty { Everywhere.save(text, from: "a link"); onSaved?() }
+    case "fortune":
+      guard let v = item("v"), ["good", "noise", "seen", "open"].contains(v),
+            let id = item("id"), id.range(of: "^f[0-9a-f]{7}$", options: .regularExpression) != nil else { return }
+      Everywhere.ledger(v, [id])
     case "settings":
       onSettings?()
     default:
@@ -95,7 +100,7 @@ final class Everywhere: NSObject {
       let p = Process()
       p.executableURL = URL(fileURLWithPath: "/bin/bash")
       p.currentDirectoryURL = repo
-      p.arguments = ["-c", "python3 tools/apply_inbox.py && git add commitments.md data/inbox.jsonl && git commit -q -m 'ledger: \(n) row\(n == 1 ? "" : "s") from Brain Home' -- commitments.md data/inbox.jsonl"]
+      p.arguments = ["-c", "python3 tools/apply_inbox.py && git add commitments.md data/inbox.jsonl; git add data/fortune.json data/fortune-feedback.jsonl data/fortune-watch.txt 2>/dev/null; git commit -q -m 'ledger: \(n) change\(n == 1 ? "" : "s") from Brain Home'"]
       try? p.run()
     }
     flush = work

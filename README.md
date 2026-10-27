@@ -61,6 +61,8 @@ Needs macOS or Linux, git, python3 and Claude Code. Node.js too, if you connect 
 | `brain health` | state of the scheduled jobs |
 | `brain home` | Brain Home: the map of your people and projects, what is owed, what to review |
 | `brain slack add <name>` | read one more Slack workspace (see Slack, below) |
+| `brain fortune` | scan Slack now for what is heading your way |
+| `brain watch <term>` | the fortune teller always looks for this |
 
 ## Brain Home
 
@@ -122,6 +124,17 @@ Once per workspace:
 Then `brain slack ls` shows every workspace and whether its token still works, and `brain slack remove <name>` takes one out. In Claude Code each workspace is a server called `slack-<name>`: ask "what did the Northwind team ask me this week?" and Claude searches the right one.
 
 Uses [slack-mcp-server](https://github.com/korotovsky/slack-mcp-server) (MIT) through `npx`, so Node.js must be installed. Before you point it at a client's workspace, check that your agreement with them allows it.
+
+## Fortune teller
+
+Once Slack is connected, the fortune teller reads every workspace for what is heading your way before it arrives: a PM asking a BA to re-check the payment provider on a project you build, two people promising a client different dates, your project discussed in a channel you are not in, a client gone quiet, someone who needs exactly what you do. Each fortune comes with the proof (who said what, where), why it touches you, one move, and a short draft you can copy.
+
+- `brain fortune` scans now; `setup.sh` can schedule it (08:00 the last 7 days, then 11, 14, 17 and 20 since the last scan).
+- Fortunes show in Brain Home's Today list, grouped by person and project; hot ones also show a notification, and the morning brief names them.
+- Mark one useful or noise in Brain Home: noise teaches the next scan to skip things like it.
+- `brain watch "payment"` adds a word it always looks for; `brain unwatch` removes it.
+
+It only reads Slack and never posts.
 
 ## Make it yours
 

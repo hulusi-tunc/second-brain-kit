@@ -22,27 +22,29 @@ uninstall_jobs() {
   done
 }
 
-# job name, script, hour, minute
+# job name, script, hours (one, or several like 11,14,17), minute, optional argument for the script
 install_job() {
-  local name=$1 script=$2 h=$3 m=$4 p="$AGENTS/$LABEL.$1.plist"
+  local name=$1 script=$2 h=$3 m=$4 arg=${5:-} p="$AGENTS/$LABEL.$1.plist"
   if [ $MAC -eq 0 ]; then
-    echo "$m $h * * * /bin/bash $SB/bin/$script    # add with: crontab -e"; return
+    echo "$m $h * * * /bin/bash $SB/bin/$script $arg    # add with: crontab -e"; return
   fi
+  local when="" hh
+  for hh in ${h//,/ }; do when="$when<dict><key>Hour</key><integer>$hh</integer><key>Minute</key><integer>$m</integer></dict>"; done
   mkdir -p "$AGENTS"
   cat > "$p" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0"><dict>
   <key>Label</key><string>$LABEL.$name</string>
-  <key>ProgramArguments</key><array><string>/bin/bash</string><string>$SB/bin/$script</string></array>
-  <key>StartCalendarInterval</key><dict><key>Hour</key><integer>$h</integer><key>Minute</key><integer>$m</integer></dict>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>$SB/bin/$script</string>${arg:+<string>$arg</string>}</array>
+  <key>StartCalendarInterval</key><array>$when</array>
   <key>StandardOutPath</key><string>/tmp/$LABEL.$name.out</string>
   <key>StandardErrorPath</key><string>/tmp/$LABEL.$name.out</string>
 </dict></plist>
 PLIST
   launchctl bootout "gui/$(id -u)" "$p" 2>/dev/null || true
   launchctl bootstrap "gui/$(id -u)" "$p"
-  printf "  %-10s every day %02d:%02d\n" "$name" "$h" "$m"
+  printf "  %-12s every day at %s:%02d\n" "$name" "$h" "$m"
 }
 
 choose_jobs() {
@@ -53,6 +55,10 @@ choose_jobs() {
   confirm "Morning brief at 08:30 (a notification and data/brief.md)" && install_job brief brain-brief.sh 8 30
   confirm "Nightly work digest from your Claude Code sessions and commits at 23:40" n && install_job work brain-work.sh 23 40
   confirm "Daily sweep of documents from your inbox folder at 18:00" n && install_job sweep brain-sweep.sh 18 0
+  if confirm "Fortune teller: scan Slack for what is heading your way, 08:00 deep, 11/14/17/20 quick (needs brain slack add)" n; then
+    install_job fortune-deep brain-fortune.sh 8 0 deep
+    install_job fortune brain-fortune.sh 11,14,17,20 0 quick
+  fi
   if [ -d "$HOME/Library/Application Support/Wispr Flow" ]; then
     confirm "Wispr Flow found. Daily meeting notes into raw/ at 18:30" && install_job wispr brain-wispr.sh 18 30
   fi

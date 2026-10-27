@@ -305,6 +305,15 @@ data["sweep"] = [{**{k: r[k] for k in ("id", "opened", "owes", "to", "what", "du
                   **({"seen": looks[r["id"]]["seen"], "seenLink": looks[r["id"]]["link"]} if r["id"] in looks else {})}
                  for r in sorted(rows, key=lambda r: (r["id"] not in looks, r["due"] or "9"))
                  if (r["id"] in looks or (is_me(r["owes"]) and r["state"] == "overdue"))]
+# fortunes: what Slack shows heading your way, from bin/brain-fortune.sh (data/fortune.json). Only
+# the ones not answered yet; good, noise and seen leave the list
+try:
+    fr = json.load(open(os.path.join(SB, "data", "fortune.json")))
+except Exception:
+    fr = {"rows": [], "lastScan": ""}
+data["fortune"] = {"lastScan": fr.get("lastScan", ""), "rows": [
+    {k: r.get(k, "") for k in ("id", "at", "kind", "urgency", "about", "text", "why", "seen", "link", "move", "draft", "draftTo")}
+    for r in fr.get("rows", []) if r.get("status") == "new"]}
 open(OUT, "w").write("window.BRAIN = " + json.dumps(data, ensure_ascii=False) + ";\n")
 kinds = Counter(n["kind"] for n in nodes.values())
 print(f"review: {sum(len(g['rows']) for g in review_rows)} rows in {len(review_rows)} groups, {len(wrote)} pages written")

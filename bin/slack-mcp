@@ -16,4 +16,6 @@ export SLACK_MCP_XOXP_TOKEN="$TOKEN"
 export SLACK_MCP_USERS_CACHE="$CACHE/users.json"
 export SLACK_MCP_CHANNELS_CACHE="$CACHE/channels.json"
 unset SLACK_MCP_ADD_MESSAGE_TOOL
+# read-only tools only: nothing it registers can post, react or edit anything
+export SLACK_MCP_ENABLED_TOOLS="conversations_history,conversations_replies,conversations_search_messages,channels_list,usergroups_list,usergroups_me"
 exec npx -y slack-mcp-server@1.3.0 --transport stdio

@@ -8,10 +8,15 @@
 # brain resume           clear a usage-limit pause
 # brain login            log the jobs' Claude account in
 # brain slack ...        Slack workspaces this brain reads (add, ls, remove)
+# brain watch <term>     the fortune teller always looks for this (unwatch <term> stops it)
+# brain fortune          scan Slack for what is heading your way now
 # brain home             Brain Home, the map of your brain, in the browser (the Mac app has it in a window)
 SB="$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)"; RAW="$SB/raw"
 case "$1" in
   slack) shift; exec "$SB/bin/brain-slack.sh" "$@" ;;
+  watch) shift; python3 "$SB/tools/fortune.py" watch add "$*" && git -C "$SB" add data/fortune-watch.txt && git -C "$SB" commit -qm "fortune: watch $*"; exit 0 ;;
+  unwatch) shift; python3 "$SB/tools/fortune.py" watch rm "$*" && git -C "$SB" add data/fortune-watch.txt && git -C "$SB" commit -qm "fortune: unwatch $*"; exit 0 ;;
+  fortune) shift; exec "$SB/bin/brain-fortune.sh" "${1:-quick}" ;;
   home) python3 "$SB/home/collect.py" >/dev/null && open "$SB/home/index.html"; exit $? ;;
   health)
     . "$SB/bin/brain-lib.sh" health

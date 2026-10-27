@@ -8,8 +8,9 @@
   /* Brain Home: the dial of your brain. Every name keeps its place and only its distance from the
      middle changes (closer needs you more); the map is for going places, reading and acting happen in
      the panel on the right. Clicking a name flies into it, its people and things gather around it;
-     what Brain filed since yesterday waits in Review for your yes. Follows the Mac's light or dark
-     look, Apple's system colours and glass, pink only where something is late. */
+     what Brain filed since yesterday waits in Review for your yes, and Today puts what is late next to
+     what Slack shows heading your way. Follows the Mac's light or dark look, Apple's system colours and
+     glass, pink only where something is late. */
   :root {
     --bg: #f2f2f7; --bg2: #ffffff; --ink: #1d1d1f; --ink2: rgb(60 60 67 / 0.62); --ink3: rgb(60 60 67 / 0.32); --line: rgb(60 60 67 / 0.12);
     --sheet: rgb(255 255 255 / 0.5); --card: rgb(255 255 255 / 0.62); --chip: rgb(118 118 128 / 0.1); --chip2: rgb(118 118 128 / 0.18);
@@ -51,7 +52,9 @@
   .crumbs .sep { color: var(--ink3); font-size: 12px; }
   .crumbs .home { display: inline-flex; align-items: center; gap: 6px; }
 
-  .dock { position: fixed; bottom: 20px; display: flex; gap: 8px; align-items: center; transform: translateX(-50%); }
+  .dock { position: fixed; bottom: 20px; display: flex; gap: 8px; align-items: center; transform: translateX(-50%); transition: opacity 0.18s ease, translate 0.18s ease; }
+  .dock:not(.on):not(:focus-within) { opacity: 0; translate: 0 8px; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .dock { transition: opacity 0.12s linear; translate: none !important; } }
   .pills { display: flex; gap: 2px; padding: 3px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); }
   .zoom { display: flex; gap: 2px; padding: 3px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); }
   .zoom button { min-width: 28px; height: 28px; padding: 0 9px; border: 0; border-radius: 14px; background: transparent; color: var(--ink2); font: 500 13px system-ui; cursor: pointer; transition: background 0.15s ease, transform 0.12s ease; }
@@ -59,8 +62,11 @@
   .zoom button:active { transform: scale(0.94); }
   .pill { height: 28px; padding: 0 11px; border-radius: 14px; border: 0; background: transparent; color: var(--ink2); font: 500 12px system-ui; cursor: pointer;
     display: inline-flex; align-items: center; gap: 6px; transition: background 0.15s ease, color 0.15s ease; }
-  .pill[aria-pressed='true'] { background: var(--chip2); color: var(--ink); }
+  .pill:hover { background: var(--chip); }
+  .pill[aria-pressed='true'] { color: var(--ink); }
+  .pill[aria-pressed='false'] { color: var(--ink3); }
   .pill .sw { width: 8px; height: 8px; background: currentColor; opacity: 0.85; }
+  .pill[aria-pressed='false'] .sw { background: transparent; box-shadow: inset 0 0 0 1.2px currentColor; }
   .time { display: flex; align-items: center; gap: 9px; height: 34px; padding: 0 13px 0 3px; border-radius: 17px; background: var(--card); box-shadow: var(--shadow); backdrop-filter: blur(20px); }
   .play { width: 28px; height: 28px; border-radius: 14px; border: 0; background: var(--chip); cursor: pointer; display: grid; place-items: center; transition: transform 0.12s ease; }
   .play:active { transform: scale(0.94); }
@@ -130,7 +136,10 @@
 
   /* ---------- inside the panel */
   .wd { font: 500 12px/16px system-ui; color: var(--ink2); padding: 0 6px; }
-  .date { font: 600 28px/32px system-ui; letter-spacing: -0.02em; margin-top: 2px; padding: 0 6px; }
+  .filed[hidden] { display: none !important; }
+  .date { font: 600 22px/28px system-ui; letter-spacing: -0.01em; margin-top: 4px; padding: 0 6px; }
+  .sum.top { margin-top: 4px; margin-bottom: 4px; }
+  .week.none { display: none; }
   .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 6px 8px; }
   .sec h3 { margin: 0; font: 600 13px/18px system-ui; }
   .sec .sub { font: 400 12px/16px system-ui; color: var(--ink2); }
@@ -155,7 +164,7 @@
   .wk .bars { height: 18px; display: flex; flex-direction: column-reverse; align-items: center; gap: 2px; margin-top: 4px; }
   .wk .bars i { display: block; width: 14px; height: 3px; border-radius: 2px; background: var(--ink); opacity: 0.5; }
   .wk .bars.none::after { content: ''; width: 3px; height: 3px; border-radius: 2px; background: var(--ink3); }
-  .counts { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; padding: 3px; margin-top: 16px; border-radius: 14px; background: var(--chip); }
+  .counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; padding: 3px; margin-top: 16px; border-radius: 14px; background: var(--chip); }
   .count { padding: 9px 8px 9px; border: 0; border-radius: 11px; background: transparent; cursor: pointer; text-align: left; transition: background 0.15s ease, transform 0.12s ease; }
   .count:hover { background: var(--chip); }
   .count:active { transform: scale(0.97); }
@@ -209,11 +218,51 @@
   .ib:hover { background: var(--chip2); color: var(--ink); }
   .ib:active { transform: scale(0.92); }
   .ib.keep:hover { color: var(--ink); }
+  .ngrp { margin-top: 12px; }
+  .ngrp .ghd { display: flex; align-items: center; justify-content: space-between; margin: 0 6px 6px; }
+  .ngrp .ghd .sub { font: 400 12px/16px system-ui; color: var(--ink2); }
+  .ngrp .gname { font: 600 12px/20px system-ui; }
+  .ft .it { cursor: pointer; }
+  .ft .it[data-id] { cursor: default; }
+  .ft .kind { margin-top: 2px; font: 400 12px/16px system-ui; color: var(--ink2); }
+  .ft .kind.hot b { color: var(--pink); font-weight: 600; }
+  .ft .more { display: none; }
+  .ft .it.open .more { display: block; }
+  .ft .it.open .what { display: block; -webkit-line-clamp: unset; overflow: visible; white-space: normal; }
+  .ft .it:not(.open) .what { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .ft .acts { opacity: 0; transition: opacity 0.12s ease; }
+  .ft .it:hover .acts, .ft .it.open .acts, .ft .it:focus-within .acts { opacity: 1; }
+  .ft .move { margin-top: 5px; font-size: 12.5px; line-height: 18px; color: var(--ink); }
+  .ft .move b { font-weight: 600; }
+  .ft .seen { margin-top: 3px; font-size: 12px; line-height: 17px; color: var(--ink3); }
+  .ft .seen a { color: inherit; text-decoration: underline; text-underline-offset: 2px; }
+  .ft .dr { margin-top: 6px; display: flex; gap: 6px; align-items: flex-start; }
+  .ft .dr .quote { flex: 1; margin-top: 0; -webkit-line-clamp: 4; user-select: text; }
+  .quote.two { -webkit-line-clamp: 2; }
   .quote { margin-top: 4px; padding-left: 9px; box-shadow: inset 2px 0 0 var(--line); color: var(--ink2); font-size: 12.5px; line-height: 18px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
   .empty { margin: 30px 6px; text-align: center; color: var(--ink2); }
   .empty b { display: block; color: var(--ink); font: 600 15px/20px system-ui; margin-bottom: 4px; }
 
   /* a node, pushed over the tab */
+  .pwhere { font: 400 12px system-ui; color: var(--ink3); padding-right: 6px; }
+  .md { padding: 0 6px; font: 400 13px/20px system-ui; color: var(--ink); overflow-wrap: anywhere; }
+  .md h1 { margin: 4px 0 10px; font: 600 22px/28px system-ui; letter-spacing: -0.01em; }
+  .md h2 { margin: 22px 0 6px; font: 600 15px/22px system-ui; }
+  .md h3 { margin: 16px 0 4px; font: 600 13px/20px system-ui; }
+  .md p, .md ul, .md ol { margin: 0 0 10px; }
+  .md ul, .md ol { padding-left: 18px; }
+  .md li { margin: 2px 0; }
+  .md a { color: inherit; text-decoration: underline; text-decoration-color: var(--ink3); text-underline-offset: 2px; }
+  .md a:hover { text-decoration-color: var(--ink); }
+  .md strong { font-weight: 600; }
+  .md blockquote { margin: 0 0 10px; padding-left: 10px; box-shadow: inset 2px 0 0 var(--line); color: var(--ink2); }
+  .md code { font: 12px ui-monospace, monospace; background: var(--chip); padding: 1px 4px; border-radius: 4px; }
+  .md pre { white-space: pre-wrap; font: 12px/18px ui-monospace, monospace; background: var(--chip); padding: 10px; border-radius: 8px; }
+  .md pre code { background: none; padding: 0; }
+  .md table { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 12px; line-height: 16px; display: block; overflow-x: auto; }
+  .md th { text-align: left; font-weight: 600; color: var(--ink2); padding: 6px 8px 6px 0; white-space: nowrap; }
+  .md td { padding: 6px 10px 6px 0; border-top: 1px solid var(--line); vertical-align: top; min-width: 84px; max-width: 240px; }
+  .md hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
   .ntop { display: flex; align-items: center; justify-content: space-between; margin: -6px 0 10px; }
   .back { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 6px; border: 0; border-radius: 9px; background: transparent; color: var(--ink2); font: 500 12px system-ui; cursor: pointer; }
   .back:hover { background: var(--chip); color: var(--ink); }
@@ -323,7 +372,7 @@
   .qc .qd.on { background: var(--ink); color: var(--bg); box-shadow: none; }
   .qc .qd.qdr { color: var(--ink3); box-shadow: none; }
   .qc .qd.qdr:hover { color: var(--ink); background: var(--chip); }
-  .qc li { transition: opacity 0.25s ease; }
+    .qc li { transition: opacity 0.25s ease; }
   .qc li.gone { opacity: 0; }
   .qc .gos { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
   .qc .gos .go { margin: 0; }
@@ -394,7 +443,7 @@
   .kin input { flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; color: var(--ink); font: 400 17px system-ui; }
   .kbar kbd { font: 600 10.5px/1 ui-monospace, Menlo, monospace; padding: 4px 6px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--line); color: var(--ink2); }
   .klist { max-height: min(420px, 56vh); overflow-y: auto; padding: 6px; }
-  .kgrp { padding: 8px 10px 4px; font: 600 11px system-ui; letter-spacing: 0.04em; text-transform: uppercase; color: var(--ink3); }
+  .kgrp { padding: 8px 10px 4px; font: 500 12px system-ui; color: var(--ink2); }
   .kit { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 7px 10px; border-radius: 10px; cursor: pointer; }
   .kit[aria-selected="true"] { background: var(--chip2); }
   .kit .sh { flex: none; width: 10px; height: 10px; background: var(--ink3); }
@@ -415,7 +464,7 @@
 <nav class="crumbs" id="crumbs" aria-label="Where you are"></nav>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 <div class="hint" id="hint" hidden></div>
-<button class="filed" id="filed"></button>
+<button class="filed" id="filed" hidden></button>
 <div class="dock" id="dock">
   <div class="zoom"><button id="zout" aria-label="Zoom out">−</button><button id="fit" aria-label="See everything">Fit</button><button id="zin" aria-label="Zoom in">+</button></div>
   <div class="pills" id="pills"></div>
@@ -425,7 +474,7 @@
 <aside class="panel" id="panel">
   <div class="phead">
     <div class="tabs" role="tablist" id="tabs"><span class="plate" id="plate"></span>
-      <button class="tab" role="tab" data-tab="today" aria-selected="true">Today</button>
+      <button class="tab" role="tab" data-tab="today" aria-selected="true">Today<span class="badge" id="fbadge"></span></button>
       <button class="tab" role="tab" data-tab="week" aria-selected="false">Week</button>
       <button class="tab" role="tab" data-tab="review" aria-selected="false">Review<span class="badge" id="rbadge"></span></button>
     </div>
@@ -437,6 +486,7 @@
     <section class="view offr" id="v-review" role="tabpanel"></section>
     <section class="view offr" id="v-node" aria-live="polite"></section>
     <section class="view offr" id="v-ask" aria-live="polite"></section>
+    <section class="view offr" id="v-page" aria-live="polite"></section>
   </div>
   <div class="pfoot">
     <div class="results" id="results" role="listbox"></div>
@@ -455,6 +505,7 @@
 <div class="qc" id="qc" role="dialog" aria-live="polite" hidden></div>
 <section class="swp" id="sw" role="dialog" aria-label="Overdue sweep" hidden></section>
 <script src="data.js"></script>
+<script src="marked.js"></script>
 <script>
 (() => {
   const B = window.BRAIN
@@ -482,7 +533,7 @@
   const esc = (s) => String(s || '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
   const KIND = { person: 'Person', project: 'Project', company: 'Company', topic: 'Topic', you: 'You' }
   const SHAPE = { person: 'border-radius:5px', company: 'border-radius:2px', project: 'border-radius:2.5px', topic: 'border-radius:5px;background:none;box-shadow:inset 0 0 0 1.5px currentColor' }
-  const obs = (rel) => 'obsidian://open?path=' + encodeURIComponent(B.root + '/' + rel)
+  const obs = (rel) => '#read:' + encodeURIComponent(rel)
   const store = { get(k, d) { try { return JSON.parse(localStorage.getItem(k)) ?? d } catch (e) { return d } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)) } catch (e) {} } }
 
   // ---------- the nodes, and how alive each was on a given day (the rewind): calls naming it in
@@ -741,10 +792,12 @@
   // the tab it came from out to the left
   const ORDER = ['today', 'week', 'review']
   function views() {
-    const askOn = !!(typeof convo !== 'undefined' && convo.open), nodeOn = !!egoN && !askOn, at = ORDER.indexOf(tab)
+    const pageOn = !!(typeof reader !== 'undefined' && reader.stack.length)
+    const askOn = !!(typeof convo !== 'undefined' && convo.open) || pageOn, nodeOn = !!egoN && !askOn, at = ORDER.indexOf(tab)
     ORDER.forEach((t, i) => { $('v-' + t).className = 'view' + (i === at ? (nodeOn || askOn ? ' off' : '') : i < at ? ' off' : ' offr') })
     $('v-node').className = 'view' + (nodeOn ? '' : askOn && egoN ? ' off' : ' offr')
-    $('v-ask').className = 'view' + (askOn ? '' : ' offr')
+    $('v-ask').className = 'view' + (askOn && !pageOn ? '' : pageOn && convo.open ? ' off' : ' offr')
+    $('v-page').className = 'view' + (pageOn ? '' : ' offr')
   }
 
   // ---------- Today: the day as a line, the week, the counts that light the map, and Next
@@ -778,29 +831,64 @@
     const when = nx.t.toDateString() === new Date().toDateString() ? '' : nx.t.toLocaleDateString('en-GB', { weekday: 'short' }) + ' '
     return `next: <b>${esc(nx.title)}</b> ${when}${nx.t.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}`
   }
+  // the owner: "Me" in the ledger, or the name in wiki/about-me.md
+  const ME = new Set(['me', 'i', 'self', 'myself', 'you', '', ...(B.me ? [B.me.toLowerCase(), B.me.split(' ')[0].toLowerCase()] : [])])
+  const isMe = (s) => ME.has((s || '').trim().replace(/\?$/, '').toLowerCase())
+  // ---------- Needs you: what you owe that is late or due and what Slack shows coming, in one list,
+  // grouped by the person or project it is about. The group that is hot or late comes first; a fortune
+  // opens in place, a promise ticks off.
+  const LATE = Object.values(owner).filter((x) => x.r.state !== 'open')
+  const KINDS = new Set(['person', 'project', 'company'])
+  const named = N.filter((n) => KINDS.has(n.kind) && n.label.length > 2).sort((a, b) => b.label.length - a.label.length)
+  function nodeOf(f) {
+    for (const t of [f.about || '', f.text || '']) { const low = t.toLowerCase(); const n = named.find((m) => low.includes(m.label.toLowerCase())); if (n) return n }
+    return null
+  }
+  let needsAll = false
+  function needs() {
+    const g = new Map()
+    const at = (key, n, name) => g.get(key) || g.set(key, { n, name, f: [], r: [] }).get(key)
+    fLeft().forEach((f) => { const n = nodeOf(f), nm = (f.about || 'Other').split(',').pop().trim(); at(n ? n.id : 'f:' + nm.toLowerCase(), n, n ? n.label : nm).f.push(f) })
+    LATE.forEach(({ r, n }) => at(n.id, n, n.label).r.push(r))
+    const U = { hot: 0, soon: 1, watch: 3 }
+    const rank = (x) => Math.min(...x.f.map((f) => U[f.urgency] ?? 3), x.r.some((r) => r.state === 'overdue') ? 1 : 4, x.r.length ? 2.5 : 4)
+    const groups = [...g.values()].sort((a, b) => rank(a) - rank(b) || (b.f.length + b.r.length) - (a.f.length + a.r.length))
+    if (!groups.length) return `<div class="empty"><b>Nothing needs you</b>No late promises, nothing coming from Slack.</div>`
+    // every group Slack has something on stays, plus the four most pressing promise-only groups
+    let rest = 0
+    const shown = needsAll ? groups : groups.filter((x) => x.f.length || rest++ < 4)
+    let opened = false
+    const fRows = (list) => list.map((f) => { const o = !opened && f.urgency === 'hot'; if (o) opened = true; return fRow(f, o) }).join('')
+    const pRow = (r) => `<div class="it" data-id="${r.id}"><button class="ck" data-done="${r.id}" aria-label="Done: ${esc(r.what)}">${ckSvg}</button>
+        <div class="w"><a class="what" href="${obs(r.source)}" title="Open where this came from">${esc(r.what)}</a>
+        <div class="meta"><span>${isMe(r.owes) ? 'You owe' : 'Owed to you'}</span><span class="${r.state === 'overdue' ? 'late' : ''}">· ${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span></div></div></div>`
+    const meta = (x) => [x.f.length ? `${x.f.length} from Slack` : '', x.r.length ? `${x.r.length} owed` : ''].filter(Boolean).join(' · ')
+    return `<div class="sec"><h3>Needs you</h3><span class="sub">by person and project</span></div>
+      ${shown.map((x) => `<div class="ngrp"><div class="ghd">${x.n ? chip(x.n) : `<span class="gname">${esc(x.name)}</span>`}<span class="sub">${meta(x)}</span></div>
+        <div class="box ft">${fRows(x.f)}${x.r.map(pRow).join('')}</div></div>`).join('')}
+      ${groups.length > shown.length || needsAll ? `<button class="more" id="needsmore">${needsAll ? 'Show fewer' : `Show all ${groups.length}`}</button>` : ''}`
+  }
   function renderToday() {
     const dictTotal = DY.dictations.reduce((a, b) => a + b, 0), askTotal = DY.asks.reduce((a, b) => a + b, 0)
     const peak = Math.max(1, ...DY.dictations)
     const nowH = new Date().getHours() + new Date().getMinutes() / 60
     const hm = (t) => { const [h, m] = t.split(':').map(Number); return h + m / 60 }
     const mineAll = Object.keys(owner).length
-    $('v-today').innerHTML = `<div class="wd">${WD[today.getDay()]}</div><div class="date">${today.getDate()} ${MONTH[today.getMonth()]}</div>
-      <div class="line" aria-hidden="true">${[9, 12, 15, 18, 21].map((h) => `<span class="hr" style="left:${X(h)}px">${String(h).padStart(2, '0')}</span>`).join('')}<div class="axis"></div>
+    const busy = DY.calls.length > 0 || wkMeets.some((m) => m.length), shown = COUNTS.slice(0, 3)
+    $('v-today').innerHTML = `<div class="date">${WD[today.getDay()]} ${today.getDate()} ${MONTH[today.getMonth()]}</div>
+      <div class="sum top">${LATE.length + fLeft().length ? `<b>${LATE.length + fLeft().length}</b> need you · ` : ''}${dictTotal ? `<b>${dictTotal}</b> dictation${dictTotal === 1 ? '' : 's'} · ` : ''}${askTotal ? `<b>${askTotal}</b> question${askTotal === 1 ? '' : 's'} · ` : ''}${nextOnCal()}</div>
+      ${busy ? `<div class="line" aria-hidden="true">${[9, 12, 15, 18, 21].map((h) => `<span class="hr" style="left:${X(h)}px">${String(h).padStart(2, '0')}</span>`).join('')}<div class="axis"></div>
         ${DY.dictations.map((c, h) => c && h >= H0 && h < H1 ? `<i class="bar" style="left:${X(h + 0.5)}px;height:${3 + (c / peak) * 20}px" title="${c} dictation${c > 1 ? 's' : ''} at ${h}:00"></i>` : '').join('')}
         ${DY.asks.map((c, h) => c && h >= H0 && h < H1 ? `<i class="askd" style="left:${X(h + 0.5)}px" title="${c} question${c > 1 ? 's' : ''} to Brain at ${h}:00"></i>` : '').join('')}
         ${DY.calls.map((c, i) => `<i class="call" style="left:${X(hm(c.start))}px;width:${Math.max(6, (c.mins / 60 / (H1 - H0)) * LW)}px" title="${esc(c.start + ' ' + c.title)}"></i>`).join('')}
-        ${nowH >= H0 && nowH <= H1 && asOf === B.today ? `<i class="nowl" style="left:${X(nowH)}px"></i>` : ''}</div>
-      <div class="sum"><b>${dictTotal}</b> dictations · <b>${askTotal}</b> question${askTotal === 1 ? '' : 's'} to Brain · ${DY.calls.length ? `<b>${DY.calls.length}</b> call${DY.calls.length > 1 ? 's' : ''}` : 'no calls'} · ${nextOnCal()}</div>
-      <div class="week" id="week">${week.map((d, i) => `<button class="wk${iso(d) === B.today ? ' today' : ''}" data-i="${i}" aria-pressed="false" title="${esc(wkMeets[i].map((m) => (m.start ? m.start + ' ' : '') + m.title).join('\n') || 'no calls')}"><div class="l">${WD[d.getDay()].slice(0, 2)} ${d.getDate()}</div>
+        ${nowH >= H0 && nowH <= H1 && asOf === B.today ? `<i class="nowl" style="left:${X(nowH)}px"></i>` : ''}</div>` : ''}
+      <div class="week${busy ? '' : ' none'}" id="week">${week.map((d, i) => `<button class="wk${iso(d) === B.today ? ' today' : ''}" data-i="${i}" aria-pressed="false" title="${esc(wkMeets[i].map((m) => (m.start ? m.start + ' ' : '') + m.title).join('\n') || 'no calls')}"><div class="l">${WD[d.getDay()].slice(0, 2)} ${d.getDate()}</div>
         <div class="bars${wkMeets[i].length ? '' : ' none'}">${wkMeets[i].slice(0, 5).map(() => '<i></i>').join('')}</div></button>`).join('')}</div>
-      <div class="counts" id="counts">${COUNTS.map(([k, n, t, cls, , long]) => `<button class="count ${cls}" data-k="${k}" aria-pressed="false" title="${long}: light them on the map"><div class="n">${n}</div><div class="t">${t}</div></button>`).join('')}</div>
+      <div class="counts" id="counts">${shown.map(([k, n, t, cls, , long]) => `<button class="count ${cls}" data-k="${k}" aria-pressed="false" title="${long}: light them on the map"><div class="n">${n}</div><div class="t">${t}</div></button>`).join('')}</div>
+      ${needs()}
       ${SW.length ? (() => { const left = SW.filter((x) => !x.gone), seen = left.filter((x) => x.seen).length, late = left.length - seen
         const head = [late ? `${late} overdue` : '', seen ? `${seen} look${seen === 1 ? 's' : ''} done` : ''].filter(Boolean).join(' · ')
-        return left.length ? `<button class="sweepgo" id="sweepgo"><span><b>Sweep: ${head}</b><span>${seen ? 'these look done, you confirm · ' : ''}one at a time · about ${Math.max(1, Math.round(left.length * 5 / 60))} min</span></span><kbd>S</kbd></button>` : '' })() : ''}
-      <div class="sec"><h3>Next</h3><span class="sub">late or due · whoever you spoke to last first</span></div>
-      <div class="box">${NEXT.map(({ r, n }) => `<div class="it" data-id="${r.id}"><button class="ck" data-done="${r.id}" aria-label="Done: ${esc(r.what)}">${ckSvg}</button>
-        <div class="w"><a class="what" href="${obs(r.source)}" title="Open where this came from">${esc(r.what)}</a>
-        <div class="meta">${chip(n)}<span class="${r.state === 'overdue' ? 'late' : ''}">${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span>${n.contact ? `<span>· spoke ${daysAgo(n.contact) === 0 ? 'today' : daysAgo(n.contact) === 1 ? 'yesterday' : daysAgo(n.contact) + ' days ago'}</span>` : ''}</div></div></div>`).join('')}</div>`
+        return left.length ? `<button class="sweepgo" id="sweepgo"><span><b>Sweep ${head}</b><span>about ${Math.max(1, Math.round(left.length * 5 / 60))} min, one at a time</span></span><kbd>S</kbd></button>` : '' })() : ''}`
   }
   $('v-today').addEventListener('click', (e) => {
     const w = e.target.closest('.wk'), c = e.target.closest('.count')
@@ -826,9 +914,6 @@
   // ---------- ledger changes go to Brain on the Mac as one link per kind of change, batched, so a
   // run of clicks is one write and one commit (brain://ledger)
   const outbox = { done: [], keep: [], drop: [] }
-  // the owner: "Me" in the ledger, or the name in wiki/about-me.md
-  const ME = new Set(['me', 'i', 'self', 'myself', 'you', '', ...(B.me ? [B.me.toLowerCase(), B.me.split(' ')[0].toLowerCase()] : [])])
-  const isMe = (s) => ME.has((s || '').trim().replace(/\?$/, '').toLowerCase())
   let flushT = 0
   function send(v, ids) {
     (outbox[v] ||= []).push(...ids); clearTimeout(flushT)
@@ -859,18 +944,57 @@
     const pages = RV.wrote.filter((p) => !readPages.has(p.id))
     const nP = groups.reduce((s, g) => s + g.rows.length, 0)
     if (!nP && !pages.length) { $('v-review').innerHTML = `<div class="empty"><b>All checked</b>Everything Brain filed since yesterday has your yes.</div>`; return }
-    $('v-review').innerHTML = `<p class="lede">Since yesterday Brain heard <b>${nP} promise${nP === 1 ? '' : 's'}</b> in ${groups.length} place${groups.length === 1 ? '' : 's'} and wrote on <b>${pages.length} page${pages.length === 1 ? '' : 's'}</b>. Keep what is right, drop what was never a promise.</p>
+    $('v-review').innerHTML = `<p class="lede">${nP ? `<b>${nP} promise${nP === 1 ? '' : 's'}</b> heard since yesterday, keep or drop each. ` : ''}${pages.length ? `<b>${pages.length} page${pages.length === 1 ? '' : 's'}</b> updated, tick the ones that read right.` : ''}</p>
       ${groups.map((g) => `<div class="grp box" data-g="${esc(g.key)}"><div class="ghead"><div class="src">${g.file || g.url ? `<a class="ttl" href="${g.url || obs(g.file)}" title="Open where Brain heard it">${esc(g.title)}</a>` : `<span class="ttl">${esc(g.title)}</span>`}
-        <span class="gk">${g.file.startsWith('archive/meeting') ? 'Call' : g.url ? 'Link' : 'Notes'} · ${fmt(D(g.rows[0].opened))} · ${g.rows.length}</span></div><button class="btn" data-keepall="${esc(g.key)}">Keep all</button></div>
+        <span class="gk">${g.file.startsWith('archive/meeting') ? 'Call' : g.url ? 'Slack' : 'Notes'} · ${fmt(D(g.rows[0].opened))} · ${g.rows.length}</span></div><button class="btn" data-keepall="${esc(g.key)}">Keep all</button></div>
         ${g.rows.map((r) => `<div class="it" data-id="${r.id}"><span class="dot ${r.state}"></span><div class="w"><div class="what">${esc(r.what)}</div>
           <div class="meta"><span>${who(r)}</span><span class="${r.state === 'overdue' ? 'late' : ''}">· ${r.due ? (r.state === 'overdue' ? 'since ' : 'by ') + fmt(D(r.due)) : 'no date'}</span></div></div>
           <div class="acts"><button class="ib keep" data-keep="${r.id}" title="Keep, it is right" aria-label="Keep: ${esc(r.what)}">${svgKeep}</button><button class="ib" data-drop="${r.id}" title="Not a promise" aria-label="Drop, not a promise: ${esc(r.what)}">${svgDrop}</button></div></div>`).join('')}</div>`).join('')}
-      ${pages.length ? `<div class="sec"><h3>Pages it wrote</h3><span class="sub">the new lines, newest pages first</span></div>
+      ${pages.length ? `<div class="sec"><h3>Pages</h3><span class="sub">newest first</span></div>
       <div class="box" id="pages">${pages.map((p) => `<div class="it" data-page="${p.id}"><div class="w">${byId[p.id] ? chip(byId[p.id]) : `<b>${esc(p.title)}</b>`}
-        ${p.lines.map((l) => `<div class="quote">${esc(l)}</div>`).join('')}${p.more ? `<div class="meta">and ${p.more} more line${p.more === 1 ? '' : 's'}</div>` : ''}</div>
+        ${p.lines.slice(0, 2).map((l) => `<div class="quote two">${esc(l)}</div>`).join('')}${p.more + Math.max(0, p.lines.length - 2) ? `<div class="meta">and ${p.more + Math.max(0, p.lines.length - 2)} more</div>` : ''}</div>
         <div class="acts"><a class="ib" href="${obs('wiki/' + p.id + '.md')}" title="Open the page to fix it" aria-label="Open ${esc(p.title)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 5h5v5M19 5l-8 8M17 14v5H5V7h5"/></svg></a><button class="ib keep" data-read="${p.id}" title="Looks right" aria-label="Looks right: ${esc(p.title)}">${svgKeep}</button></div></div>`).join('')}</div>` : ''}`
   }
-  // ---------- Week: the last 7 days and the next 7, from the ledger and its history
+  // ---------- Fortune: what Slack shows heading your way, from bin/brain-fortune.sh. Useful and
+  // Noise both take it off the list; noise teaches the next scan to skip things like it
+  const FT = B.fortune || { rows: [], lastScan: '' }
+  const fDone = new Set(store.get('brain-home-fortune', []))
+  const fLeft = () => FT.rows.filter((r) => !fDone.has(r.id))
+  const FKIND = { ripple: 'Coming your way', collision: 'Collision', 'without-you': 'Without you', drift: 'Drift', opening: 'Opening' }
+  const svgCopy = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V5.5A1.5 1.5 0 0 0 14.5 4h-9A1.5 1.5 0 0 0 4 5.5v9A1.5 1.5 0 0 0 5.5 16H8"/></svg>'
+  const fRow = (r, open) => `<div class="it${open ? ' open' : ''}" data-fid="${r.id}" tabindex="0" aria-expanded="${!!open}"><span class="dot ${r.urgency === 'hot' ? 'overdue' : r.urgency === 'soon' ? 'due' : ''}"></span><div class="w">
+        <div class="what">${esc(r.text)}</div>
+        <div class="kind${r.urgency === 'hot' ? ' hot' : ''}">${r.urgency === 'hot' ? '<b>Hot</b> · ' : ''}${esc(FKIND[r.kind] || r.kind)}</div>
+        <div class="more"><div class="quote">${esc(r.why)}</div>
+        ${r.move ? `<div class="move"><b>Move</b> ${esc(r.move)}</div>` : ''}
+        <div class="seen">${r.link ? `<a href="${esc(r.link)}" title="Open in Slack">${esc(r.seen || 'Open the thread')}</a>` : esc(r.seen)}</div>
+        ${r.draft ? `<div class="dr"><div class="quote">${r.draftTo ? `<b>to ${esc(r.draftTo)}</b> ` : ''}${esc(r.draft)}</div><button class="ib" data-fcopy="${r.id}" title="Copy the draft" aria-label="Copy the draft">${svgCopy}</button></div>` : ''}</div></div>
+        <div class="acts"><button class="ib keep" data-fgood="${r.id}" title="Useful" aria-label="Useful: ${esc(r.text)}">${svgKeep}</button><button class="ib" data-fnoise="${r.id}" title="Noise, fewer like this" aria-label="Noise: ${esc(r.text)}">${svgDrop}</button></div></div>`
+  function renderFortune() { $('fbadge').textContent = fLeft().filter((r) => r.urgency !== 'watch').length || '' }
+  function copyText(t) {
+    const done = () => toast('Draft copied')
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t).then(done, () => fallback())
+    fallback()
+    function fallback() { const a = document.createElement('textarea'); a.value = t; document.body.appendChild(a); a.select(); try { document.execCommand('copy'); done() } catch {} a.remove() }
+  }
+  $('v-today').addEventListener('click', (e) => {
+    if (e.target.closest('#needsmore')) { needsAll = !needsAll; renderToday(); return }
+    const g = e.target.closest('[data-fgood]'), n = e.target.closest('[data-fnoise]'), c = e.target.closest('[data-fcopy]')
+    if (c) { const r = FT.rows.find((x) => x.id === c.dataset.fcopy); if (r) copyText(r.draft); return }
+    const b = g || n
+    if (!b) {
+      const row = e.target.closest('.it[data-fid]'); if (!row || e.target.closest('a')) return
+      const open = !row.classList.contains('open')
+      $('v-today').querySelectorAll('.it.open[data-fid]').forEach((x) => { x.classList.remove('open'); x.setAttribute('aria-expanded', 'false') })
+      if (open) { row.classList.add('open'); row.setAttribute('aria-expanded', 'true') }
+      return
+    }
+    const id = b.dataset.fgood || b.dataset.fnoise, v = g ? 'good' : 'noise'
+    fDone.add(id); store.set('brain-home-fortune', [...fDone])
+    location.href = `brain://fortune?v=${v}&id=${id}`
+    toast(v === 'good' ? 'Useful, more like this' : 'Noise, fewer like this')
+    const row = b.closest('.it'); gone(row, () => { const grp = row.closest('.ngrp'); row.remove(); renderFortune(); if (grp && !grp.querySelector('.it')) gone(grp, () => grp.remove()) })
+  })
   const WK = B.week || { closed: [], slipped: [], ahead: [], fresh: 0, freshMine: 0, meetings: 0, from: iso(today) }
   let wkAll = false
   const wkRow = (r, how) => `<div class="it"><span class="dot ${how}"></span><div class="w"><div class="what${how === 'done' ? ' closed' : ''}">${esc(r.what)}</div>
@@ -879,7 +1003,7 @@
     const cold = COUNTS[4][4].map((id) => byId[id]).filter(Boolean)
     const mineClosed = WK.closed.filter((r) => isMe(r.owes)).length
     const shown = wkAll ? WK.closed : WK.closed.slice(0, 6)
-    $('v-week').innerHTML = `<div class="wk"><p class="lede">Since ${fmt(D(WK.from))}: <b>${WK.closed.length} closed</b> (${mineClosed} yours), <b>${WK.slipped.length} slipped</b>, ${WK.fresh} new promise${WK.fresh === 1 ? '' : 's'} (${WK.freshMine} yours) from ${WK.meetings} call${WK.meetings === 1 ? '' : 's'} and your notes.</p>
+    $('v-week').innerHTML = `<div class="wk"><p class="lede">Since ${fmt(D(WK.from))}: <b>${WK.closed.length} closed</b> (${mineClosed} yours), <b>${WK.slipped.length} slipped</b>, ${WK.fresh} new promise${WK.fresh === 1 ? '' : 's'} (${WK.freshMine} yours) from ${WK.meetings} call${WK.meetings === 1 ? '' : 's'} and Slack.</p>
       <div class="sec"><h3>Next 7 days</h3><span class="sub">${WK.ahead.length ? 'yours first' : ''}</span></div>
       ${WK.ahead.length ? `<div class="box">${WK.ahead.map((r) => wkRow(r, 'due')).join('')}</div>` : '<div class="empty">Nothing with a date this week.</div>'}
       ${WK.slipped.length ? `<div class="sec"><h3>Slipped</h3><span class="sub">due this week, not seen done</span></div><div class="box">${WK.slipped.map((r) => wkRow(r, 'overdue')).join('')}</div>` : ''}
@@ -1000,8 +1124,8 @@
   resEl.addEventListener('click', (e) => { const r = e.target.closest('.res'); if (r) { q.value = ''; q.dispatchEvent(new Event('input')); fly(byId[r.dataset.id]) } })
   $('chip').querySelector('button').addEventListener('click', () => fly(null))
 
-  // ---------- ⌘K: one box for everything. Names and projects jump on the map, the tabs and the
-  // sweep open, "ask …" asks Brain, "done …" closes a row. Rows come from every name's mine and theirs, once each.
+  // ---------- ⌘K: one box for everything. Names jump on the map, the tabs and the sweep open,
+  // "ask …" asks Brain, "done …" closes a row.
   const kbar = $('kbar'), kq = $('kq'), klist = $('klist')
   const KROWS = (() => { const m = new Map(); N.forEach((n) => [...(n.mine || []), ...(n.theirs || [])].forEach((r) => { if (!m.has(r.id)) m.set(r.id, { ...r, node: n }) })); return [...m.values()] })()
   const CMDS = [
@@ -1068,6 +1192,7 @@
     if (e.key === 'Escape') {
       if (results.length) { q.value = ''; q.dispatchEvent(new Event('input')); return }
       if (quickN) return quick(null)
+      if (reader.stack.length) return pageBack()
       if (convo.open) return closeAsk()
       if (trail.length > 1) { trail.pop(); const n = trail[trail.length - 1]; gather(n); place(); aim(); showNode(n); crumbs(); return }
       if (egoN) return fly(null)
@@ -1136,9 +1261,6 @@
     if (e.target.closest('.x')) return quick(null)
     if (e.target.closest('.go')) { const n = quickN; quick(null); fly(n) }
   })
-  // ---------- the sweep: every overdue thing you owe, oldest first,
-  // one at a time: Done, Still on (moves it a week out) or Drop (it was never really on). The dial lights
-  // who it is about; Brain applies each choice to the ledger. Keys: D, S, X, arrows, Escape.
   const SW = (B.sweep || []).map((r) => ({ ...r }))
   let swAt = 0, swOn = false
   const swEl = $('sw')
@@ -1176,7 +1298,7 @@
     const card = `<div class="swc${dir ? ' in' + (dir > 0 ? 'r' : 'l') : ''}">
       <div class="swwho">${who.map((n) => `<span class="sww"><span class="pic ${n.kind === 'person' ? (n.photo ? '' : 'sil') : 'thing'}" style="--tint:${tintOf(n)};${n.photo ? `background-image:url('${n.photo}')` : ''}">${n.kind === 'person' ? '' : esc(initials(n))}</span>${esc(n.label)}</span>`).join('') || `<span class="sww">${esc(mine ? r.to : r.owes)}</span>`}</div>
       <div class="swt">${esc(r.what)}</div>
-      ${r.seen ? `<div class="swseen"><span aria-hidden="true">✓</span><span><b>Looks done.</b> ${esc(r.seen)}${r.seenLink ? ` · <a href="${esc(r.seenLink)}">see it</a>` : ''}</span></div>` : ''}
+      ${r.seen ? `<div class="swseen"><span aria-hidden="true">✓</span><span><b>Looks done.</b> ${esc(r.seen)}${r.seenLink ? ` · <a href="${esc(r.seenLink)}">see it in Slack</a>` : ''}</span></div>` : ''}
       <div class="swm">${whom}${late > 0 ? ` · <span class="late">since ${fmt(D(r.due))}, ${late} day${late === 1 ? '' : 's'}</span>` : ''} · opened ${fmt(D(r.opened))} · <a href="${obs(r.source)}">open the note</a></div></div>`
     swEl.innerHTML = `<div class="swh"><b>${r.seen ? 'Looks done' : 'Overdue sweep'}</b><span class="swn">${done + 1} of ${SW.length}</span><button class="x" data-sw="close" aria-label="Close">×</button></div>
       <div class="swbar"><i style="width:${(done / SW.length) * 100}%"></i></div>${card}
@@ -1210,6 +1332,60 @@
   }, true)
   document.addEventListener('click', (e) => { if (e.target.closest('#sweepgo')) sweep(true) })
   const CAN_ASK = !!(window.webkit && window.webkit.messageHandlers && window.webkit.messageHandlers.brain)
+  const reader = { stack: [] }
+  const svgBack = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M15 6l-6 6 6 6"/></svg>'
+  const dirOf = (rel) => rel.includes('/') ? rel.slice(0, rel.lastIndexOf('/') + 1) : ''
+  function resolve(base, href) {
+    const parts = (dirOf(base) + href).split('/'), out = []
+    for (const p of parts) { if (p === '..') out.pop(); else if (p && p !== '.') out.push(p) }
+    return out.join('/')
+  }
+  async function readFile(rel) {
+    const path = rel.split('/').map(encodeURIComponent).join('/')
+    // inside Brain: brainfile://; in a browser on the file itself (tests): the file next door
+    const r = await fetch((qs.get('native') ? 'brainfile://read/' : 'file://' + B.root + '/') + path)
+    if (!r.ok) throw new Error(r.status)
+    return r.text()
+  }
+  async function openPage(rel, push = true) {
+    rel = decodeURIComponent(rel).replace(/^\/+/, '').split('#')[0]
+    if (push) reader.stack.push(rel)
+    views()
+    const nice = (r) => { const t = r.split('/').pop().replace(/\.md$/, '').replace(/-/g, ' '); return t.charAt(0).toUpperCase() + t.slice(1) }
+    const v = $('v-page'), title = nice(rel)
+    const backTo = reader.stack.length > 1 ? nice(reader.stack[reader.stack.length - 2]) : convo.open ? 'Answer' : egoN ? egoN.label : ({ review: 'Review', week: 'Week', fortune: 'Fortune' })[tab] || 'Today'
+    v.innerHTML = `<div class="ntop"><button class="back" id="pback">${svgBack}${esc(backTo)}</button><span class="pwhere">${esc(dirOf(rel).replace(/\/$/, ''))}</span></div><div class="md"><p class="empty">Reading…</p></div>`
+    v.scrollTop = 0
+    try {
+      let t = await readFile(rel)
+      t = t.replace(/^---\n[\s\S]*?\n---\n/, '')
+      // [[name]] and [[name|label]] as links to the wiki page of that name
+      t = t.replace(/\[\[([^\]|]+)(?:\|([^\]]+))?\]\]/g, (_, a, b) => `[${b || a}](${a.includes('/') ? a : 'wiki/' + a}${a.endsWith('.md') ? '' : '.md'})`)
+      t = t.split(/(```[\s\S]*?```|`[^`\n]*`)/).map((x, k) => k % 2 ? x : x.replace(/(^|[^~\\])~(?!~)/g, '$1\\~')).join('')
+      const html = rel.endsWith('.md') ? marked.parse(t, { gfm: true }) : `<pre>${esc(t)}</pre>`
+      if (reader.stack[reader.stack.length - 1] !== rel) return
+      v.querySelector('.md').innerHTML = /^<h1/.test(html.trim()) ? html : `<h1>${esc(title)}</h1>` + html
+      v.querySelectorAll('.md a[href]').forEach((a) => {
+        const h = a.getAttribute('href')
+        if (/^[a-z]+:/i.test(h) || h.startsWith('#')) return
+        a.setAttribute('href', '#read:' + encodeURIComponent(h.startsWith('/') ? h.slice(1) : (h.startsWith('wiki/') && !rel.startsWith('wiki/') ? h : resolve(rel, h))))
+      })
+    } catch (e) {
+      v.querySelector('.md').innerHTML = `<div class="empty"><b>Can't read this page</b>${esc(rel)}${qs.get('native') ? '' : ' · pages open inside the Brain app'}</div>`
+    }
+  }
+  function pageBack() {
+    reader.stack.pop()
+    if (reader.stack.length) return openPage(reader.stack[reader.stack.length - 1], false)
+    views()
+  }
+  window.brainPage = (rel) => openPage(rel)
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest('a[href^="#read:"]'); if (!a) return
+    e.preventDefault(); e.stopPropagation(); openPage(a.getAttribute('href').slice(6))
+  }, true)
+  $('v-page').addEventListener('click', (e) => { if (e.target.closest('#pback')) pageBack() })
+
   const convo = { open: false, turns: [], cur: null }
   const clean = (t) => String(t || '').replace(/\*\*/g, '').trim()
   function homeAsk(text) {
@@ -1318,6 +1494,12 @@
   }
   function shape(n, x, y, r, strong) {
     const person = n.kind === 'person', t = tintOf(n)
+    // a tile that needs you, or carries a pink ring, is always big enough for its letters
+    if (!person && n.kind !== 'topic' && (strong || n.overdue)) r = Math.max(r, 10)
+    if (!person && n.kind !== 'topic' && r < 9.5 && !photos[n.id]) {
+      cx.save(); cx.fillStyle = pal.ink3; cx.beginPath(); cx.roundRect(x - 3.5, y - 3.5, 7, 7, 2.5); cx.fill(); cx.restore()
+      return
+    }
     cx.save()
     cx.beginPath()
     if (person || n.kind === 'topic') cx.arc(x, y, r, 0, Math.PI * 2)
@@ -1346,7 +1528,17 @@
   const hash = (s) => { let h = 0; for (const c of s) h = (h * 31 + c.charCodeAt(0)) % 997; return h / 997 }
   const changedSet = new Set(B.changed)
   let introStart = 0
+  const dockEl = $('dock'); let ptr = { x: -1, y: -1 }, dockOn = null
+  addEventListener('pointermove', (e) => { ptr = { x: e.clientX, y: e.clientY }; dockTick() })
+  document.documentElement.addEventListener('pointerleave', () => { ptr = { x: -1, y: -1 }; dockTick() })
+  function dockTick() {
+    const near = ptr.y > H - 150 && ptr.x >= 0 && ptr.x < (wide ? W - 424 : W)
+    const pinned = asOf !== B.today || !on.person || !on.project || !on.company
+    const want = near || pinned || matchMedia('(hover: none)').matches
+    if (want !== dockOn) { dockOn = want; dockEl.classList.toggle('on', want) }
+  }
   function draw(now) {
+    dockTick()
     const ink = css('--ink'), ink2 = css('--ink2'), ink3 = css('--ink3'), pink = css('--pink'), bg = css('--bg'), bg2 = css('--bg2'), chip2 = css('--chip2'), pinkBg = css('--pinkBg')
     pal = { ink, ink2, ink3, bg, card: css('--card') }
     const dark = document.documentElement.dataset.theme === 'dark' || (document.documentElement.dataset.theme !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches)
@@ -1374,7 +1566,7 @@
     })
     cx.setLineDash([]); cx.globalAlpha = 0.18 * dialA; cx.strokeStyle = ink3; cx.beginPath(); cx.arc(ox, oy, R * z, 0, Math.PI * 2); cx.stroke()
     cx.font = '600 9px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'
-    ;['NOW', 'THIS WEEK', 'QUIET'].forEach((s, t) => { const ty = oy + ST[t] * R * z + 1; cx.font = '600 9px system-ui'; const tw = cx.measureText(s).width + 16; cx.globalAlpha = dialA; cx.fillStyle = bg2; cx.fillRect(ox - tw / 2, ty - 6, tw, 12); cx.globalAlpha = 0.95 * dialA; cx.fillStyle = t === 0 ? ink2 : ink3; cx.fillText(s.split('').join(String.fromCharCode(8202)), ox, ty) })
+    ;['Now', 'This week', 'Quiet'].forEach((s, t) => { const ty = oy + ST[t] * R * z + 1; cx.font = '500 11px system-ui'; const tw = cx.measureText(s).width + 16; cx.globalAlpha = dialA; cx.fillStyle = bg2; cx.fillRect(ox - tw / 2, ty - 6, tw, 12); cx.globalAlpha = 0.95 * dialA; cx.fillStyle = t === 0 ? ink2 : ink3; cx.fillText(s, ox, ty) })
     // the sweep itself
     if (intro < 1.05 && !reduce) {
       const a = intro * Math.PI * 2 - Math.PI / 2
@@ -1385,11 +1577,11 @@
       cx.strokeStyle = ink2; cx.lineWidth = 1.2; cx.beginPath(); cx.moveTo(ox, oy); cx.lineTo(ox + Math.cos(a) * R * z, oy + Math.sin(a) * R * z); cx.stroke()
     }
     // what each half holds, outside the rim where it starts
-    cx.font = '600 9.5px system-ui'; cx.textBaseline = 'middle'
+    cx.font = '500 12px system-ui'; cx.textBaseline = 'middle'
     for (const h of heads) {
       const p = polar(h.side, h.ang - 0.05, R + 30), [sx, sy] = S(p.x, p.y)
       cx.globalAlpha = dialA * 0.9 * reveal(clock(p.x, p.y)); cx.fillStyle = ink3; cx.textAlign = h.side < 0 ? 'right' : 'left'
-      cx.fillText(`${h.text.toUpperCase().split('').join(String.fromCharCode(8202))}  ${h.count}`, sx, sy)
+      cx.fillText(`${h.text[0].toUpperCase() + h.text.slice(1).toLowerCase()}  ${h.count}`, sx, sy)
     }
     const focus = egoN || hover
     const isN = (n) => egoN && (n === egoN || egoPos.has(n))
@@ -1400,7 +1592,7 @@
       for (const p of web) {
         if (p.a.show < 0.5 || p.b.show < 0.5) continue
         const mine = hover && (p.a === hover || p.b === hover)
-        if (!mine && ((p.a.tierNow ?? 2) > 0 || (p.b.tierNow ?? 2) > 0 || hover || lit)) continue
+        if (!mine) continue
         cx.globalAlpha = dialA * Math.min(reveal(clock(p.a.x, p.a.y)), reveal(clock(p.b.x, p.b.y))) * (mine ? 0.5 : dark ? 0.1 : 0.06)
         cx.strokeStyle = mine ? ink : ink2; curve(p.a, p.b)
       }
@@ -1520,7 +1712,7 @@
       }
     }
     // what is not written, said once, under the dial
-    if (!egoN && !lit && quiet) { const bx = stage.cx, by = stage.h - 76; cx.globalAlpha = dialA * 0.9 * Math.min(1, intro); cx.fillStyle = ink3; cx.font = '500 12px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(`Closer to the middle, needs you more · ${quiet} more names: pinch to zoom in, two fingers to move, / to find`, bx, by); cx.textAlign = 'left' }
+    if (!egoN && !lit && quiet) { const bx = stage.cx, by = stage.h - 76; cx.globalAlpha = dialA * 0.9 * Math.min(1, intro); cx.fillStyle = ink3; cx.font = '500 12px system-ui'; cx.textAlign = 'center'; cx.textBaseline = 'middle'; cx.fillText(`Closer to the middle needs you more · pinch for ${quiet} more`, bx, by); cx.textAlign = 'left' }
     // the middle: the brain mark, it fades as you fly away from it
     cx.globalAlpha = 1 - egoK * 0.85; mark(ox, oy, 34 * Math.max(0.9, Math.min(1.3, z)), ink, now)
     cx.globalAlpha = 1
@@ -1536,7 +1728,7 @@
   }
 
   // ---------- start
-  dial(); relayout(false); renderToday(); renderReview(); renderWeek()
+  dial(); relayout(false); renderToday(); renderReview(); renderWeek(); renderFortune()
   // ?sweep: open on the sweep (for pictures)
   if (qs.has('sweep') && SW.some((x) => !x.gone)) setTimeout(() => sweep(true), 50)
   whenEl.textContent = 'Today'

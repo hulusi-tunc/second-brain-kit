@@ -20,6 +20,11 @@ BRIEF_TOOLS=""
 # Slack workspaces this brain reads, one read-only server each. Managed by `brain slack add/remove`.
 SLACK_WORKSPACES=""
 
+# The fortune teller reads every workspace in SLACK_WORKSPACES. To use the claude.ai Slack connector
+# instead or as well, list its tools here:
+# FORTUNE_TOOLS="mcp__claude_ai_Slack__slack_search_public_and_private,mcp__claude_ai_Slack__slack_read_thread"
+FORTUNE_TOOLS=""
+
 # Git branch the jobs pull and push. Pushing only happens when the repo has a remote.
 BRAIN_BRANCH="main"
 
