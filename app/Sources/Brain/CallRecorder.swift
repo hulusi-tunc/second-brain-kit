@@ -91,6 +91,11 @@ final class CallRecorder {
       AudioUnitSetProperty(au, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &id, UInt32(MemoryLayout<AudioDeviceID>.size))
     }
     let fmt = input.outputFormat(forBus: 0)
+    // a mic with no format yet (0 Hz) made installTap raise: the app crashed, saw the call again
+    // on relaunch and crashed again. Fail the take instead.
+    guard fmt.sampleRate > 0, fmt.channelCount > 0 else {
+      throw NSError(domain: "brain.mic", code: 1, userInfo: [NSLocalizedDescriptionKey: "the mic gave no audio format"])
+    }
     meConv = AVAudioConverter(from: fmt, to: target)
     meConv?.downmix = true
     input.installTap(onBus: 0, bufferSize: 4096, format: fmt) { [weak self] b, _ in
