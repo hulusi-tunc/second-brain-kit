@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Second Brain First Hour</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one reading column; the first hour is a real sequence of 7 steps on a left rail that fills as you tick them; a live "one note's trip" demo sits up top as the thesis. */
+:root {
+  --paper: #f2f4f6;
+  --sheet: #ffffff;
+  --ink: #17212c;
+  --muted: #5b6774;
+  --line: #d9dee4;
+  --accent: #2747c7;
+  --accent-soft: #e3e8fb;
+  --mark: #ffe58a;
+  --term: #111821;
+  --term-fg: #d7e0ea;
+  --term-dim: #7f8c99;
+  --ok: #1f7a4d;
+  --display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --paper: #0f141a; --sheet: #161d25; --ink: #e6ebf0; --muted: #98a4b1; --line: #29323d;
+  --accent: #8ea3ff; --accent-soft: #1d2747; --mark: #6b5a12; --term: #0a0e13; --term-fg: #d7e0ea; --term-dim: #6f7c89; --ok: #5fcf95;
+  color-scheme: dark } }
+:root[data-theme="dark"] {
+  --paper: #0f141a; --sheet: #161d25; --ink: #e6ebf0; --muted: #98a4b1; --line: #29323d;
+  --accent: #8ea3ff; --accent-soft: #1d2747; --mark: #6b5a12; --term: #0a0e13; --term-fg: #d7e0ea; --term-dim: #6f7c89; --ok: #5fcf95;
+  color-scheme: dark }
+
+* { box-sizing: border-box }
+body { background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--body); margin: 0 }
+.wrap { max-width: 780px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 48px 80px; display: grid; gap: 56px }
+h1, h2, h3 { font-family: var(--display); text-wrap: balance; margin: 0; line-height: 1.12 }
+h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); font-weight: 700; letter-spacing: -0.02em }
+h2 { font-size: 1.7rem; font-weight: 700; letter-spacing: -0.01em }
+h3 { font-size: 1.2rem; font-weight: 700 }
+p { margin: 0; max-width: 65ch }
+a { color: var(--accent) }
+code { font-family: var(--mono); font-size: 0.88em; background: var(--accent-soft); padding: 1px 5px; border-radius: 4px }
+mark { background: var(--mark); color: inherit; padding: 0 3px; border-radius: 2px }
+.eyebrow { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted) }
+.lede { font-size: 1.15rem; color: var(--muted) }
+section { display: grid; gap: 18px }
+
+/* hero */
+header { display: grid; gap: 16px }
+.need { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px }
+.need span { font: 500 0.82rem/1 var(--mono); border: 1px solid var(--line); background: var(--sheet); padding: 7px 10px; border-radius: 6px }
+
+/* the trip demo */
+.trip { background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; overflow: hidden }
+.trip-tabs { display: flex; flex-wrap: wrap; border-bottom: 1px solid var(--line) }
+.trip-tabs button { flex: 1 1 0; min-width: 0; font: 500 0.85rem/1.2 var(--mono); padding: 12px 10px; border: 0; background: none; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; text-align: center }
+.trip-tabs button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent) }
+.trip-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px }
+.trip-body { padding: 18px 20px 20px; display: grid; gap: 12px; min-height: 230px }
+.trip-cap { color: var(--muted); font-size: 0.95rem }
+.file { display: grid; gap: 6px; min-width: 0 }
+.file-name { font: 500 0.78rem/1 var(--mono); color: var(--muted) }
+pre { margin: 0; font: 400 0.86rem/1.6 var(--mono); white-space: pre-wrap; word-break: break-word }
+.file pre { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px }
+.files { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) }
+.trip-nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 0 20px 18px }
+.trip-nav button { font: 500 0.88rem/1 var(--body); padding: 10px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--sheet); color: var(--ink); cursor: pointer }
+.trip-nav button.primary { background: var(--accent); color: var(--sheet); border-color: var(--accent) }
+.trip-nav button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.pane { animation: in .28s ease-out }
+@keyframes in { from { opacity: .35; transform: translateY(4px) } to { opacity: 1; transform: none } }
+
+/* steps */
+.progress { display: flex; align-items: center; gap: 12px; font: 500 0.85rem/1 var(--mono); color: var(--muted) }
+.bar { flex: 1; height: 6px; background: var(--line); border-radius: 3px; overflow: hidden }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s ease }
+ol.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 0 }
+.step { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 0 16px; position: relative; padding-bottom: 34px }
+.step::before { content: ""; position: absolute; left: 19px; top: 40px; bottom: 0; width: 2px; background: var(--line) }
+.step:last-child::before { display: none }
+.step.done::before { background: var(--accent) }
+.tick { width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--line); background: var(--sheet); font: 700 1rem/1 var(--display); color: var(--muted); cursor: pointer; display: grid; place-items: center; position: relative; z-index: 1 }
+.tick:hover { border-color: var(--accent) }
+.tick:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.step.done .tick { background: var(--accent); border-color: var(--accent); color: var(--sheet) }
+.step-body { display: grid; gap: 12px; padding-top: 6px; min-width: 0 }
+.step-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px }
+.time { font: 500 0.75rem/1 var(--mono); color: var(--muted); border: 1px solid var(--line); padding: 4px 7px; border-radius: 5px }
+.term { background: var(--term); color: var(--term-fg); border-radius: 10px; position: relative; min-width: 0 }
+.term pre { padding: 14px 16px; padding-right: 76px; overflow-x: auto; white-space: pre; word-break: normal }
+.term .dim { color: var(--term-dim) }
+.copy { position: absolute; top: 8px; right: 8px; font: 500 0.75rem/1 var(--mono); padding: 7px 9px; border-radius: 6px; border: 1px solid #3a4654; background: #1c2531; color: var(--term-fg); cursor: pointer }
+.copy:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+.note { font-size: 0.92rem; color: var(--muted); border-left: 2px solid var(--line); padding-left: 12px }
+ul.asks { margin: 0; padding-left: 20px; display: grid; gap: 4px }
+
+/* day + extras */
+.day { display: grid; gap: 0; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); overflow: hidden }
+.day div { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 14px; padding: 14px 18px; border-top: 1px solid var(--line) }
+.day div:first-child { border-top: 0 }
+.day b { font: 500 0.95rem/1.5 var(--mono); font-variant-numeric: tabular-nums }
+.extras { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) }
+.extra { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 8px; align-content: start }
+.extra p { font-size: 0.93rem; color: var(--muted) }
+.rules { margin: 0; padding-left: 20px; display: grid; gap: 6px }
+table { border-collapse: collapse; width: 100%; font-size: 0.93rem }
+.tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--sheet) }
+td, th { text-align: left; padding: 10px 14px; border-top: 1px solid var(--line); vertical-align: top }
+tr:first-child td, th { border-top: 0 }
+th { font: 500 0.75rem/1 var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line) }
+td:first-child { white-space: nowrap }
+footer { color: var(--muted); font-size: 0.9rem; display: grid; gap: 6px }
+
+@media (max-width: 520px) {
+  .wrap { padding-block: 32px 64px; gap: 44px }
+  .step { grid-template-columns: 32px minmax(0, 1fr); gap: 0 12px }
+  .tick { width: 32px; height: 32px; font-size: .9rem }
+  .step::before { left: 15px; top: 32px }
+  .day div { grid-template-columns: 64px minmax(0, 1fr) }
+}
+@media (prefers-reduced-motion: reduce) { .pane { animation: none } .bar i { transition: none } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+<header>
+  <span class="eyebrow">second-brain-kit · first hour</span>
+  <h1>Your second brain, from zero to the first morning brief</h1>
+  <p class="lede">You write things down the way they come. Claude files them into a wiki about your work, keeps a list of who owes what to whom, and tells you each morning the one thing that matters. It is all plain markdown in a private git repo you own.</p>
+  <div class="need" aria-label="What you need">
+    <span>macOS or Linux</span><span>git</span><span>python3</span><span>Claude Code, logged in</span><span>an empty private GitHub repo</span><span>about 45 minutes</span>
+  </div>
+</header>
+
+<section aria-labelledby="trip-h">
+  <span class="eyebrow">how it works</span>
+  <h2 id="trip-h">One note's trip through the brain</h2>
+  <p>Before you set anything up, this is the whole idea. Click through it.</p>
+  <div class="trip">
+    <div class="trip-tabs" role="tablist" aria-label="Stages of a note">
+      <button role="tab" id="t0" aria-selected="true" aria-controls="tp">1 · capture</button>
+      <button role="tab" id="t1" aria-selected="false" aria-controls="tp">2 · raw/</button>
+      <button role="tab" id="t2" aria-selected="false" aria-controls="tp">3 · /translate</button>
+      <button role="tab" id="t3" aria-selected="false" aria-controls="tp">4 · 08:30</button>
+    </div>
+    <div class="trip-body" id="tp" role="tabpanel" aria-live="polite"></div>
+    <div class="trip-nav">
+      <button id="prev" type="button">Back</button>
+      <button id="next" type="button" class="primary">Next</button>
+    </div>
+  </div>
+</section>
+
+<section aria-labelledby="steps-h">
+  <span class="eyebrow">set it up</span>
+  <h2 id="steps-h">The first hour, seven steps</h2>
+  <p>Tick each one when it is done. Your progress stays in this browser.</p>
+  <div class="progress"><span id="count">0 of 7</span><div class="bar"><i id="bar"></i></div></div>
+
+  <ol class="steps" id="steps">
+    <li class="step" data-step="1">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 1 done">1</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Make your private copy</h3><span class="time">5 min</span></div>
+        <p>First make an <b>empty private repo</b> on GitHub for your notes (no README, no license). Then clone the kit and point it there. Clone it, don't use "Use this template": a clone keeps the kit's history, so later updates merge by themselves.</p>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>git clone https://github.com/hulusi-tunc/second-brain-kit.git ~/second-brain
+cd ~/second-brain
+git remote rename origin kit
+git remote add origin git@github.com:<mark>you</mark>/<mark>your-brain</mark>.git
+git push -u origin main</pre></div>
+        <p class="note">Your notes go to <code>origin</code>, your private repo. The kit stays a second remote called <code>kit</code>. Nothing you write ever goes back to it.</p>
+      </div>
+    </li>
+
+    <li class="step" data-step="2">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 2 done">2</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Run the setup</h3><span class="time">5 min</span></div>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>./setup.sh</pre></div>
+        <p>It asks a few short questions and you can press Enter on any of them:</p>
+        <ul class="asks">
+          <li>your name, what you do in one line, the topics you think about</li>
+          <li>the languages you write in, how the brain should write, what it should never do</li>
+          <li>where your code projects live and a folder you drop documents into</li>
+          <li>which scheduled jobs to turn on. Say yes to <b>translate</b> and <b>brief</b> for now, add the rest later with <code>./setup.sh jobs</code></li>
+          <li>whether to install the Mac app. Say no for now, it is a 575 MB download. Come back to it after the first week.</li>
+        </ul>
+        <p class="note">If it prints <code>export PATH="$HOME/.local/bin:$PATH"</code>, add that line to your <code>~/.zshrc</code> and open a new terminal, so <code>brain</code> works everywhere.</p>
+      </div>
+    </li>
+
+    <li class="step" data-step="3">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 3 done">3</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Capture your first three things</h3><span class="time">2 min</span></div>
+        <p>From any terminal, in any folder. Write the way you would say it, no formatting. Use real things from this week: a promise, a decision, something you keep forgetting.</p>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>brain "Sam said the quote is fine if we ship by the 20th"
+brain "decided: no new clients until Northwind is live"
+brain "I keep forgetting to send Maya the invoice"
+brain ls</pre></div>
+        <p>Each one lands in <code>raw/&lt;today&gt;.md</code> under its time. <code>brain ls</code> shows what is waiting. Nothing has been processed yet. That is the next step's job.</p>
+      </div>
+    </li>
+
+    <li class="step" data-step="4">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 4 done">4</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Let it get to know you</h3><span class="time">15 min</span></div>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>cd ~/second-brain
+claude
+<span class="dim"># then, inside Claude Code:</span>
+/interview</pre></div>
+        <p>Claude asks one question at a time and writes your answers into <code>wiki/about-me.md</code>, <code>wiki/voice.md</code> and new pages for the people and projects you mention. Answer like you are talking to a new colleague. Stop whenever you want. What it didn't get to goes into <code>wiki/open-questions.md</code> for next time.</p>
+        <p class="note">This is what turns it from a notes folder into something that knows you. Fifteen minutes now saves a month of the brain guessing.</p>
+      </div>
+    </li>
+
+    <li class="step" data-step="5">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 5 done">5</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Process the inbox</h3><span class="time">3 min</span></div>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>/translate</pre></div>
+        <p>Your three notes from step 3 get merged into the wiki. The promises go into <code>commitments.md</code> with an id like <code>c3f9a21b</code>, and the raw file moves to <code>archive/</code> unchanged. Open <code>commitments.md</code> and look: "you owe Sam: ship by the 20th" and "you owe Maya: the invoice" should both be there.</p>
+        <p class="note">From tonight the nightly job runs this at 23:55. You only run it by hand when you want the answer now.</p>
+      </div>
+    </li>
+
+    <li class="step" data-step="6">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 6 done">6</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Ask it something</h3><span class="time">5 min</span></div>
+        <p>Still in Claude Code, in the brain folder. Plain questions work:</p>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>what do I owe this week?
+what did I decide about new clients?
+/prep Sam</pre></div>
+        <p><code>/prep Sam</code> is the one to use before a call: what you talked about last time, who owes what, three questions to ask. Then close a promise from any terminal:</p>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>brain done <mark>c3f9a21b</mark></pre></div>
+      </div>
+    </li>
+
+    <li class="step" data-step="7">
+      <button class="tick" type="button" aria-pressed="false" aria-label="Mark step 7 done">7</button>
+      <div class="step-body">
+        <div class="step-head"><h3>Tomorrow at 08:30</h3><span class="time">0 min</span></div>
+        <p>The brief job writes <code>data/brief.md</code> and shows one notification: the one thing for today. If nothing arrives, check the jobs:</p>
+        <div class="term"><button class="copy" type="button">Copy</button><pre>brain health</pre></div>
+        <p>That's the whole setup. The habit from here is just <code>brain "..."</code> whenever something comes up, and <code>/log</code> at the end of a long Claude Code session, so the brain keeps what that session taught it about you.</p>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section aria-labelledby="day-h">
+  <span class="eyebrow">after setup</span>
+  <h2 id="day-h">A normal day with it</h2>
+  <div class="day">
+    <div><b>08:30</b><span>The brief: one notification, the full brief in <code>data/brief.md</code>, or <code>/today</code> in Claude Code.</span></div>
+    <div><b>anytime</b><span><code>brain "..."</code> for anything worth keeping. Drop meeting notes, pasted chats or a document's text straight into <code>raw/</code>.</span></div>
+    <div><b>before calls</b><span><code>/prep &lt;who&gt;</code>.</span></div>
+    <div><b>end of a session</b><span><code>/log</code>, so the brain keeps what you figured out.</span></div>
+    <div><b>23:55</b><span>Translate runs on its own. Whatever you captured is in the wiki by morning.</span></div>
+  </div>
+</section>
+
+<section aria-labelledby="rules-h">
+  <span class="eyebrow">trust</span>
+  <h2 id="rules-h">Four rules that keep it trustworthy</h2>
+  <p>They are in <code>CLAUDE.md</code> and every loop follows them. Change anything else in the kit, but keep these.</p>
+  <ol class="rules">
+    <li><b>Nothing is deleted from <code>raw/</code> or <code>archive/</code>.</b> The original of everything you said is always there.</li>
+    <li><b>The wiki is merged, never overwritten.</b> Claude reads a page before it changes it.</li>
+    <li><b>When it isn't sure, it says so in the entry</b> ("unsure: ...") instead of guessing.</li>
+    <li><b><code>private/</code> stays private.</b> It never enters git, and nothing from it is copied into other files.</li>
+  </ol>
+</section>
+
+<section aria-labelledby="more-h">
+  <span class="eyebrow">week two</span>
+  <h2 id="more-h">When the basics feel normal</h2>
+  <div class="extras">
+    <div class="extra"><h3>Brain Home</h3><p>A dashboard of everyone and everything in your wiki, closer to the middle when it needs you. Mark things done or drop them there. <code>brain home</code></p></div>
+    <div class="extra"><h3>Slack</h3><p>One read-only connection per workspace, so the brief and <code>/prep</code> see your chats. It can't post. <code>brain slack add work</code></p></div>
+    <div class="extra"><h3>Fortune teller</h3><p>Reads Slack for what is heading your way: two people promising a client different dates, your project discussed without you. <code>brain fortune</code></p></div>
+    <div class="extra"><h3>The Mac app</h3><p>Lives in the notch. Hold a key to dictate anywhere, ask the brain out loud, get notes after every call. Everything is transcribed on your Mac. See <code>app/README.md</code>.</p></div>
+    <div class="extra"><h3>Your phone</h3><p>Open the same private repo in Claude Code in the Claude app. The jobs push, so your phone sees today's brain.</p></div>
+    <div class="extra"><h3>Kit updates</h3><p>When the kit ships something new, pull it in. Your notes and the kit's code live in different folders, so it merges cleanly. <code>git pull kit main</code></p></div>
+  </div>
+</section>
+
+<section aria-labelledby="fix-h">
+  <span class="eyebrow">when something is off</span>
+  <h2 id="fix-h">Fixes for the usual problems</h2>
+  <div class="tablewrap"><table>
+    <tr><th>You see</th><th>Do this</th></tr>
+    <tr><td><code>brain: command not found</code></td><td>Add <code>export PATH="$HOME/.local/bin:$PATH"</code> to <code>~/.zshrc</code>, open a new terminal.</td></tr>
+    <tr><td>No brief in the morning</td><td><code>brain health</code> shows each job's last good run and why it failed.</td></tr>
+    <tr><td>"paused" notification</td><td>You hit your Claude usage limit. The jobs wait for the reset by themselves. <code>brain resume</code> clears the pause early.</td></tr>
+    <tr><td>"logged out" notification</td><td>The jobs' Claude login is gone. Run <code>brain login</code>.</td></tr>
+    <tr><td>Notes piling up in <code>raw/</code></td><td><code>brain ls</code>, then <code>/translate</code> in Claude Code.</td></tr>
+    <tr><td>Want to stop everything</td><td><code>./setup.sh uninstall</code> removes the jobs and the command. Your notes stay.</td></tr>
+  </table></div>
+  <p>The log is <code>~/Library/Logs/second-brain.log</code>.</p>
+</section>
+
+<footer>
+  <span>second-brain-kit, MIT. Code, prompts and app: <a href="https://github.com/hulusi-tunc/second-brain-kit">github.com/hulusi-tunc/second-brain-kit</a></span>
+  <span>Examples use made-up people: Sam, Maya, Northwind.</span>
+</footer>
+</div>
+
+<script>
+(function () {
+  var panes = [
+    { cap: "Something comes up. You type it in any terminal, the way you'd say it. No app to open, no format.",
+      files: [{ name: "terminal", body: '$ brain "Sam said the quote is fine if we ship by the 20th"\nsaved -> raw/2026-01-12.md' }] },
+    { cap: "It lands in today's inbox file under the time. Meeting notes, pasted chats and documents land here too.",
+      files: [{ name: "raw/2026-01-12.md", body: "# 2026-01-12\n\n## 14:32\n\nSam said the quote is fine if we ship by the 20th" }] },
+    { cap: "At 23:55 (or when you run /translate), Claude files it. One note can touch several places.",
+      files: [
+        { name: "wiki/sam.md", body: "## Now\n- Quote agreed, as long as we ship by 20 Jan." },
+        { name: "commitments.md", body: "| c3f9a21b | 2026-01-12 | me | Sam |\n  ship by the 20th | 2026-01-20 | open |" },
+        { name: "archive/2026-01-12.md", body: "the original, word for word,\nkept forever" } ] },
+    { cap: "Next morning, one notification with the one thing that matters today. The full brief is in data/brief.md.",
+      files: [{ name: "notification, 08:30", body: "One: confirm the 20th with Sam.\nAlso open: the invoice for Maya, 3 days old." }] }
+  ];
+  var tabs = document.querySelectorAll('[role="tab"]'), body = document.getElementById("tp");
+  var prev = document.getElementById("prev"), next = document.getElementById("next"), cur = 0;
+  function esc(s) { return s.replace(/&/g, "&amp;").replace(/</g, "&lt;") }
+  function show(i) {
+    cur = i;
+    tabs.forEach(function (t, k) { t.setAttribute("aria-selected", k === i ? "true" : "false"); t.tabIndex = k === i ? 0 : -1 });
+    body.setAttribute("aria-labelledby", "t" + i);
+    var p = panes[i];
+    body.innerHTML = '<div class="pane" style="display:grid;gap:12px"><p class="trip-cap">' + esc(p.cap) + '</p><div class="files">' +
+      p.files.map(function (f) { return '<div class="file"><span class="file-name">' + esc(f.name) + '</span><pre>' + esc(f.body) + '</pre></div>' }).join("") + "</div></div>";
+    prev.disabled = i === 0; prev.style.opacity = i === 0 ? .4 : 1;
+    next.textContent = i === panes.length - 1 ? "Start over" : "Next";
+  }
+  tabs.forEach(function (t, k) {
+    t.addEventListener("click", function () { show(k) });
+    t.addEventListener("keydown", function (e) {
+      if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+        var n = (k + (e.key === "ArrowRight" ? 1 : panes.length - 1)) % panes.length; show(n); tabs[n].focus();
+      }
+    });
+  });
+  prev.addEventListener("click", function () { if (cur > 0) show(cur - 1) });
+  next.addEventListener("click", function () { show(cur === panes.length - 1 ? 0 : cur + 1) });
+  show(0);
+
+  // checklist
+  var KEY = "sbk-first-hour", done = {};
+  try { done = JSON.parse(localStorage.getItem(KEY) || "{}") || {} } catch (e) { done = {} }
+  var steps = document.querySelectorAll(".step");
+  function paint() {
+    var n = 0;
+    steps.forEach(function (s) {
+      var on = !!done[s.dataset.step]; if (on) n++;
+      s.classList.toggle("done", on);
+      var b = s.querySelector(".tick"); b.setAttribute("aria-pressed", on ? "true" : "false");
+      b.textContent = on ? "✓" : s.dataset.step;
+    });
+    document.getElementById("count").textContent = n === steps.length ? "all 7 done" : n + " of 7";
+    document.getElementById("bar").style.width = (n / steps.length * 100) + "%";
+  }
+  steps.forEach(function (s) {
+    s.querySelector(".tick").addEventListener("click", function () {
+      done[s.dataset.step] = !done[s.dataset.step];
+      try { localStorage.setItem(KEY, JSON.stringify(done)) } catch (e) {}
+      paint();
+    });
+  });
+  paint();
+
+  // copy buttons: copy the command text without comments
+  document.querySelectorAll(".copy").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var pre = b.parentNode.querySelector("pre");
+      var text = pre.innerText.split("\n").filter(function (l) { return !/^\s*#/.test(l) }).join("\n").trim();
+      function ok() { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy" }, 1400) }
+      function fallback() { var r = document.createRange(); r.selectNodeContents(pre); var s = getSelection(); s.removeAllRanges(); s.addRange(r); b.textContent = "Selected" ; setTimeout(function () { b.textContent = "Copy" }, 1400) }
+      try { navigator.clipboard.writeText(text).then(ok, fallback) } catch (e) { fallback() }
+    });
+  });
+})();
+</script>
+</body>
+</html>
