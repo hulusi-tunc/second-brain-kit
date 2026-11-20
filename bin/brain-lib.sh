@@ -38,9 +38,10 @@ brain_fail() {
 
 brain_paused() { [ -f "$PAUSE_F" ] && [ "$(date +%s)" -lt "$(cat "$PAUSE_F" 2>/dev/null || echo 0)" ]; }
 
-# Did a failed run hit a usage limit or a logged-out account? Then pause every job until the reset.
+# Did a failed run hit a usage limit, or is the account logged out or shut off by its organization?
+# Then pause every job until the reset.
 brain_check_limit() {
-  if echo "$1" | grep -qiE "Not logged in|run /login|invalid api key|token has expired"; then
+  if echo "$1" | grep -qiE "Not logged in|run /login|invalid api key|token has expired|OAuth session expired|disabled Claude subscription access"; then
     echo $(( $(date +%s) + 86400 )) > "$PAUSE_F"
     brain_notify "logged out" "the jobs' Claude login is gone, run: brain login"
     brain_log "$JOB: logged out, jobs paused for a day"

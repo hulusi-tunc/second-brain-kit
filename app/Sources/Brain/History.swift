@@ -30,7 +30,7 @@ enum History {
       line.append(0x0A)
       let file = root.appendingPathComponent("history.jsonl")
       if let h = try? FileHandle(forWritingTo: file) {
-        h.seekToEndOfFile(); h.write(line); try? h.close()
+        _ = try? h.seekToEnd(); try? h.write(contentsOf: line); try? h.close()
       } else {
         try? line.write(to: file)
       }

@@ -43,7 +43,7 @@ final class AnswerHistory {
     line.append(0x0A)
     let f = Self.file
     try? FileManager.default.createDirectory(at: f.deletingLastPathComponent(), withIntermediateDirectories: true)
-    if let h = try? FileHandle(forWritingTo: f) { h.seekToEndOfFile(); h.write(line); try? h.close() }
+    if let h = try? FileHandle(forWritingTo: f) { _ = try? h.seekToEnd(); try? h.write(contentsOf: line); try? h.close() }
     else { try? line.write(to: f) }
   }
 }
