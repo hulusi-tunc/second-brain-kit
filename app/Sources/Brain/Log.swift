@@ -13,7 +13,10 @@ enum Log {
     rotate(now)
     let f = DateFormatter(); f.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
     let line = "\(f.string(from: now)) \(s)\n"
-    if let h = try? FileHandle(forWritingTo: url) { h.seekToEndOfFile(); h.write(Data(line.utf8)); try? h.close() }
+    // the old seekToEndOfFile and write(_:) raise an Objective-C exception when the file goes away
+    // under them; that skipped the defer, the lock stayed taken, and the next log line from the main
+    // thread froze the app for good (notch, dictation, Brain Home). The throwing ones can't.
+    if let h = try? FileHandle(forWritingTo: url) { _ = try? h.seekToEnd(); try? h.write(contentsOf: Data(line.utf8)); try? h.close() }
     else { try? Data(line.utf8).write(to: url) }
   }
 
@@ -25,7 +28,7 @@ enum Log {
     let d = DateFormatter(); d.dateFormat = "yyyy-MM-dd"
     let old = dir.appendingPathComponent("Brain-\(d.string(from: mod)).log")
     if let data = try? Data(contentsOf: url) {
-      if let h = try? FileHandle(forWritingTo: old) { h.seekToEndOfFile(); h.write(data); try? h.close() }
+      if let h = try? FileHandle(forWritingTo: old) { _ = try? h.seekToEnd(); try? h.write(contentsOf: data); try? h.close() }
       else { try? data.write(to: old) }
       try? fm.removeItem(at: url)
     }

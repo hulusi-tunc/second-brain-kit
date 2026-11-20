@@ -91,7 +91,7 @@ final class Everywhere: NSObject {
     let lines = ids.map { "{\"t\":\"\(v)\",\"id\":\"\($0)\",\"at\":\"\(at)\",\"via\":\"Brain Home\"\(extra)}\n" }.joined()
     let inbox = repo.appendingPathComponent("data/inbox.jsonl")
     try? FileManager.default.createDirectory(at: inbox.deletingLastPathComponent(), withIntermediateDirectories: true)
-    if let h = try? FileHandle(forWritingTo: inbox) { h.seekToEndOfFile(); h.write(Data(lines.utf8)); try? h.close() }
+    if let h = try? FileHandle(forWritingTo: inbox) { _ = try? h.seekToEnd(); try? h.write(contentsOf: Data(lines.utf8)); try? h.close() }
     else { try? lines.write(to: inbox, atomically: true, encoding: .utf8) }
     pending += ids.count
     flush?.cancel()
@@ -117,7 +117,7 @@ final class Everywhere: NSObject {
     var out = ""
     if !FileManager.default.fileExists(atPath: file.path) { out += "# \(d.string(from: Date()))\n\n" }
     out += "## \(t.string(from: Date())) (from \(from))\n\n\(text)\n\n"
-    if let h = try? FileHandle(forWritingTo: file) { h.seekToEndOfFile(); h.write(Data(out.utf8)); try? h.close() }
+    if let h = try? FileHandle(forWritingTo: file) { _ = try? h.seekToEnd(); try? h.write(contentsOf: Data(out.utf8)); try? h.close() }
     else { try? out.write(to: file, atomically: true, encoding: .utf8) }
   }
 }
