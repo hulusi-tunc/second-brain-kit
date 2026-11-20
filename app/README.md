@@ -39,8 +39,10 @@ defaults write local.secondbrain.app repo ~/my-brain           # if the app shou
 Spelling hints for names Whisper gets wrong go in `~/Library/Application Support/Brain/vocab.json`:
 
 ```json
-{ "prompt": "Northwind, Okafor, Figma.", "replacements": [{ "from": "north wind", "to": "Northwind" }], "snippets": [] }
+{ "prompt": "Northwind, Okafor, Figma.", "replacements": [{ "from": "north wind", "to": "Northwind" }], "snippets": [], "ghosts": [] }
 ```
+
+`ghosts` is for the phrases Whisper makes up from silence in your languages (a YouTube sign-off, "amen"): a take that is only one of them is dropped, not pasted. English and French ones are built in. Every key is optional.
 
 ## From anywhere
 

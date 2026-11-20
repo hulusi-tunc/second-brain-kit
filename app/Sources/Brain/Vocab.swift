@@ -6,6 +6,8 @@ struct Vocab: Decodable {
   var prompt: String = ""
   var replacements: [Pair] = []
   var snippets: [Snippet] = []
+  /// more phrases Whisper makes up from silence in your languages, dropped like the built-in ones
+  var ghosts: [String] = []
 
   /// the hint list as single names, for Apple's engine
   var names: [String] { prompt.trimmingCharacters(in: CharacterSet(charactersIn: ".")).components(separatedBy: ", ").filter { !$0.isEmpty } }
@@ -18,10 +20,20 @@ struct Vocab: Decodable {
     return v
   }
 
+  enum CodingKeys: String, CodingKey { case prompt, replacements, snippets, ghosts }
+  init() {}
+  init(from d: Decoder) throws {
+    let c = try d.container(keyedBy: CodingKeys.self)
+    prompt = try c.decodeIfPresent(String.self, forKey: .prompt) ?? ""
+    replacements = try c.decodeIfPresent([Pair].self, forKey: .replacements) ?? []
+    snippets = try c.decodeIfPresent([Snippet].self, forKey: .snippets) ?? []
+    ghosts = try c.decodeIfPresent([String].self, forKey: .ghosts) ?? []
+  }
+
   /// What Whisper says on silence or noise; never paste these alone
   private static let ghosts: Set<String> = [
     "", "you", "thank you", "thanks for watching", "thank you for watching", "bye",
-    "soustitres réalisés par la communauté damaraorg", "merci", "merci beaucoup",
+    "soustitres réalisés par la communauté damaraorg", "merci", "merci beaucoup", "amen",
   ]
 
   static func key(_ s: String) -> String {
@@ -32,7 +44,7 @@ struct Vocab: Decodable {
   /// nil when there is nothing worth pasting
   func apply(_ raw: String) -> String? {
     let k = Vocab.key(raw)
-    if Vocab.ghosts.contains(k) { return nil }
+    if Vocab.ghosts.contains(k) || ghosts.contains(where: { Vocab.key($0) == k }) { return nil }
     if let s = snippets.first(where: { Vocab.key($0.trigger) == k }) { return s.text }
     var out = raw
     for r in replacements {
