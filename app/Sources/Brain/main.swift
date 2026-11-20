@@ -866,6 +866,16 @@ if let i = args.firstIndex(of: "--test-command") {
 } else if let i = args.firstIndex(of: "--file"), i + 1 < args.count {
   runFile(args[i + 1])
 } else {
+  // One Brain at a time. A second copy (a login item beside the launch agent) also heard the key,
+  // and every take was pasted twice. A second one waits here, silent, until the first exits, so a
+  // launch agent restart never loops on it.
+  try? FileManager.default.createDirectory(at: Busy.dir, withIntermediateDirectories: true)
+  let lockFD = open(Busy.dir.appendingPathComponent("brain.lock").path, O_CREAT | O_RDWR, 0o644)
+  if lockFD >= 0, flock(lockFD, LOCK_EX | LOCK_NB) != 0 {
+    Log.write("another Brain is running, pid \(getpid()) waits for it to exit")
+    flock(lockFD, LOCK_EX)
+    Log.write("the other Brain exited, pid \(getpid()) starts")
+  }
   MainActor.assumeIsolated {
     let app = NSApplication.shared
     let delegate = App()
